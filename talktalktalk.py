@@ -10,7 +10,11 @@
 # license: MIT license
 
 
-import sys, json, bleach, time, threading, dumbdbm, random, re
+import sys, json, bleach, time, threading, random, re
+try:
+    import dbm.dumb as dumbdbm
+except ImportError:
+    import dumbdbm
 import daemon
 from bottle import route, run, view, request, post, ServerAdapter, get, static_file
 from gevent import pywsgi
@@ -43,7 +47,7 @@ def main():
     def send_userlist():
         for u in users.keys():
             if not u.closed:
-                u.send(json.dumps({'type' : 'userlist', 'connected': users.values()}))
+                u.send(json.dumps({'type' : 'userlist', 'connected': list(users.values())}))
 
     def clean_username(usr, ws):
         username = bleach.clean(usr, tags=ALLOWEDTAGS, strip=True)
@@ -83,8 +87,9 @@ def main():
             try:
                 receivedmsg = ws.receive()
                 if receivedmsg is not None:
-
-                    receivedmsg = receivedmsg.decode('utf8')
+                    # In Python 3, strings are already Unicode
+                    if isinstance(receivedmsg, bytes):
+                        receivedmsg = receivedmsg.decode('utf8')
                     if len(receivedmsg) > 4096:      # this user is probably a spammer
                         ws.send(json.dumps({'type' : 'flood'}))
                         break
