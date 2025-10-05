@@ -474,7 +474,7 @@ html {
 .piece-bn { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bN.png'); }
 .piece-bp { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bP.png'); }
 
-.promotion-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.promotion-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10; }
 .promotion-overlay::after { content: ''; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.35); }
 .promotion-overlay-panel { position: relative; background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; min-width: 200px; z-index: 1; }
 .promotion-overlay-title { font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
