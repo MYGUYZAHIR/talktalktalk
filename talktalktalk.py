@@ -270,7 +270,11 @@ def main():
 
     @route('/popsound.mp3')
     def popsound():
-        return static_file('popsound.mp3', root='.')        
+        from bottle import response
+        response.content_type = 'audio/mpeg'
+        with open('popsound.mp3', 'rb') as f:
+            data = f.read()
+        return data        
 
     run(host=HOST, port=PORT, debug=True, server=GeventWebSocketServer)
 
