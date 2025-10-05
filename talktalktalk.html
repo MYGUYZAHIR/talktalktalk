@@ -566,7 +566,9 @@ function ready() {
     else 
         $('#username').text(localStorage.getItem("username"));
 
-    ws = new WebSocket(location.href.replace('http', 'ws') + 'ws');        // replace replaces only the first occurence
+    var wsScheme = (location.protocol === 'https:') ? 'wss' : 'ws';
+    var wsUrl = wsScheme + '://' + location.host + '/ws';
+    ws = new WebSocket(wsUrl);
       
     $(window).on('beforeunload', function() { 
         ws.close(); 
