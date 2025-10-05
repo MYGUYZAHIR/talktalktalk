@@ -942,7 +942,15 @@ function ready() {
     // Chess modal controls
     $('#chess-close').on('click', function(){ $('#chess-modal').addClass('hidden'); });
     $('#chess-resign').on('click', function(){ if (chessGame) { ws.send(JSON.stringify({ type: 'chess_resign', game_id: chessGame.id })); } });
-    $('#chess-board').on('click', '.chess-square', onSquareClick);
+    $('#chess-board')
+        .on('click', '.chess-square', onSquareClick)
+        .on('dragstart', '.chess-piece', onPieceDragStart)
+        .on('dragend', '.chess-piece', onPieceDragEnd)
+        .on('dragover', '.chess-square', onSquareDragOver)
+        .on('dragleave', '.chess-square', onSquareDragLeave)
+        .on('drop', '.chess-square', onSquareDrop);
+    $('#promotion-options').on('click', '.promotion-choice', onPromotionChoice);
+    $('#promotion-cancel').on('click', function(){ hidePromotionDialog(); });
 }
 
 function renderConnectedList() {
