@@ -442,17 +442,35 @@ html {
 #chess-modal { z-index: 1000; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 95vw; max-width: 720px; background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); padding: 1rem; }
 .chess-layout { display: grid; grid-template-columns: 1fr 240px; gap: 1rem; }
 .chess-board { width: 100%; aspect-ratio: 1 / 1; display: grid; grid-template-columns: repeat(8, 1fr); border: 1px solid var(--border-light); border-radius: var(--radius-lg); overflow: hidden; }
-.chess-square { display: flex; align-items: center; justify-content: center; font-size: 2rem; user-select: none; cursor: pointer; }
-.chess-square.light { background: #eee; }
-.chess-square.dark { background: #9bb4d3; }
+.chess-square { display: flex; align-items: center; justify-content: center; user-select: none; cursor: pointer; position: relative; }
+:root { --chess-light: #eeeed2; --chess-dark: #769656; }
+.chess-square.light { background: var(--chess-light); }
+.chess-square.dark { background: var(--chess-dark); }
 .chess-square.selected { outline: 3px solid var(--accent-primary); outline-offset: -3px; }
-.chess-square.lastmove { box-shadow: inset 0 0 0 3px rgba(59,130,246,0.35); }
+.chess-square.lastmove { box-shadow: inset 0 0 0 3px rgba(246, 223, 99, 0.45); }
 .chess-panel { border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 0.75rem; height: 100%; display: flex; flex-direction: column; gap: 0.5rem; }
 .chess-panel h4 { margin-bottom: 0.25rem; color: var(--text-secondary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .chess-status { min-height: 1.5rem; color: var(--text-secondary); }
 .chess-actions { margin-top: auto; display: flex; gap: 0.5rem; }
 .chess-button { padding: 0.5rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--bg-secondary); cursor: pointer; }
 .chess-button:hover { background: var(--accent-secondary); color: var(--accent-primary); }
+
+/* Pieces (Staunton-style via external assets) */
+.chess-piece { position: absolute; inset: 0; background-position: center; background-repeat: no-repeat; background-size: 80% auto; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); pointer-events: none; }
+/* White */
+.piece-wk { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/wk.png'); }
+.piece-wq { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/wq.png'); }
+.piece-wr { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/wr.png'); }
+.piece-wb { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/wb.png'); }
+.piece-wn { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/wn.png'); }
+.piece-wp { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/wp.png'); }
+/* Black */
+.piece-bk { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/bk.png'); }
+.piece-bq { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/bq.png'); }
+.piece-br { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/br.png'); }
+.piece-bb { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/bb.png'); }
+.piece-bn { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/bn.png'); }
+.piece-bp { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/bp.png'); }
 
 @media (max-width: 768px) {
   .chess-layout { grid-template-columns: 1fr; }
@@ -943,16 +961,11 @@ function renderBoard() {
     board.empty();
     var parts = chessGame.fen.split(' ');
     var ranks = parts[0].split('/');
-    if (chessGame.color === 'white') {
-        ranks = ranks; // a8..h1 natural, we will map squares accordingly
-    } else {
+    if (chessGame.color !== 'white') {
         ranks = ranks.slice().reverse();
     }
     var files = ['a','b','c','d','e','f','g','h'];
-    var unicode = {
-        'P':'♙','N':'♘','B':'♗','R':'♖','Q':'♕','K':'♔',
-        'p':'♟','n':'♞','b':'♝','r':'♜','q':'♛','k':'♚'
-    };
+    var mapPiece = { 'P':'wp','N':'wn','B':'wb','R':'wr','Q':'wq','K':'wk','p':'bp','n':'bn','b':'bb','r':'br','q':'bq','k':'bk' };
     for (var r = 0; r < 8; r++) {
         var row = ranks[r];
         var fileIndex = 0;
@@ -961,21 +974,24 @@ function renderBoard() {
             if (/[1-8]/.test(ch)) {
                 var empties = parseInt(ch, 10);
                 for (var e = 0; e < empties; e++) {
-                    appendSquare(r, fileIndex, '');
+                    appendSquare(r, fileIndex, null);
                     fileIndex++;
                 }
             } else {
-                appendSquare(r, fileIndex, unicode[ch] || '');
+                appendSquare(r, fileIndex, mapPiece[ch] || null);
                 fileIndex++;
             }
         }
     }
-    function appendSquare(r, f, text) {
+    function appendSquare(r, f, pieceCode) {
         var file = (chessGame.color === 'white') ? files[f] : files.slice().reverse()[f];
         var rank = (chessGame.color === 'white') ? (8 - r) : (r + 1);
         var sq = file + String(rank);
         var light = ((r + f) % 2) === 0;
-        var el = $('<div class="chess-square" />').addClass(light ? 'light' : 'dark').attr('data-square', sq).text(text);
+        var el = $('<div class="chess-square" />').addClass(light ? 'light' : 'dark').attr('data-square', sq);
+        if (pieceCode) {
+            el.append($('<div/>').addClass('chess-piece').addClass('piece-' + pieceCode));
+        }
         if (chessGame.lastMove && (sq === chessGame.lastMove.from || sq === chessGame.lastMove.to)) el.addClass('lastmove');
         board.append(el);
     }
