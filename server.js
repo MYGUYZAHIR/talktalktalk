@@ -1,0 +1,298 @@
+const express = require('express');
+const http = require('http');
+const path = require('path');
+const fs = require('fs');
+const WebSocket = require('ws');
+const sanitizeHtml = require('sanitize-html');
+const ChessCtor = require('chess.js').Chess;
+
+// Config (mirrors config.py defaults)
+const HOST = '0.0.0.0';
+const PORT = 12000;
+const ADMINNAME = 'admin';
+const ADMINHIDDENNAME = 'adminxyz';
+
+// Persistence
+const DATA_DIR = path.join(__dirname, 'data');
+const MSG_FILE = path.join(DATA_DIR, 'messages.jsonl');
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
+let idx = 0; // next message id
+let messages = []; // array of message objects {type:'message', message, username, id, datetime}
+
+function loadMessages() {
+  if (!fs.existsSync(MSG_FILE)) return;
+  const lines = fs.readFileSync(MSG_FILE, 'utf8').split('\n').filter(Boolean);
+  for (const line of lines) {
+    try {
+      const obj = JSON.parse(line);
+      if (obj && typeof obj.id === 'number') {
+        messages.push(obj);
+        idx = Math.max(idx, obj.id + 1);
+      }
+    } catch (_) {}
+  }
+}
+
+function appendMessage(obj) {
+  fs.appendFile(MSG_FILE, JSON.stringify(obj) + '\n', () => {});
+}
+
+loadMessages();
+
+// Server
+const app = express();
+app.use(express.static(path.join(__dirname)));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'talktalktalk.html'));
+});
+
+app.get('/popsound.mp3', (req, res) => {
+  res.sendFile(path.join(__dirname, 'popsound.mp3'));
+});
+
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// State
+const users = new Map(); // ws -> username
+const pings = new Map(); // ws -> timestamp
+const usernameToWs = new Map(); // username -> ws
+const invites = new Map(); // key `${inviter}\u0000${target}` -> timestamp
+const games = new Map(); // gid -> {board: Chess, white, black, over}
+let nextGameId = 1;
+const userMessageTimes = new Map(); // ws -> Array<number> timestamps
+
+function now() { return Date.now() / 1000; }
+
+function send(ws, payload) {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(typeof payload === 'string' ? payload : JSON.stringify(payload));
+  }
+}
+
+function broadcast(payload) {
+  for (const ws of wss.clients) {
+    if (ws.readyState === WebSocket.OPEN) send(ws, payload);
+  }
+}
+
+function sendUserList() {
+  const list = Array.from(users.values());
+  const payload = { type: 'userlist', connected: list };
+  for (const [ws] of users) send(ws, payload);
+}
+
+function getWsByUsername(name) {
+  const ws = usernameToWs.get(name);
+  if (ws && users.get(ws) === name) return ws;
+  for (const [w, n] of users.entries()) if (n === name) return w;
+  return null;
+}
+
+function sendToUsername(name, payload) {
+  const ws = getWsByUsername(name);
+  if (ws && ws.readyState === WebSocket.OPEN) { send(ws, payload); return true; }
+  return false;
+}
+
+function cleanUsername(usr, ws) {
+  let username = sanitizeHtml(String(usr || ''), { allowedTags: [], allowedAttributes: {} });
+  username = username.replace(/\W+/g, '').slice(0, 16);
+  if (username.toLowerCase() === ADMINHIDDENNAME) {
+    username = ADMINNAME;
+    send(ws, { type: 'displayeduser', username });
+  } else if (username.toLowerCase() === ADMINNAME || username === '') {
+    username = 'user' + Math.floor(Math.random() * 1001);
+    send(ws, { type: 'usernameunavailable', username });
+  }
+  return username;
+}
+
+function messagesRange(startId, endIdExclusive) {
+  const out = [];
+  for (let i = Math.max(0, startId); i < Math.min(idx, endIdExclusive); i++) {
+    const msg = messages[i];
+    if (msg) out.push(JSON.stringify(msg));
+  }
+  return out;
+}
+
+// Cleanup stale users
+setInterval(() => {
+  const t = now();
+  let changed = false;
+  for (const [ws, lastPing] of pings.entries()) {
+    if (t - lastPing > 30) {
+      const uname = users.get(ws);
+      users.delete(ws);
+      pings.delete(ws);
+      userMessageTimes.delete(ws);
+      if (usernameToWs.get(uname) === ws) usernameToWs.delete(uname);
+      changed = true;
+    }
+  }
+  if (changed) sendUserList();
+}, 10000);
+
+wss.on('connection', (ws, req) => {
+  if (req.url && !req.url.startsWith('/ws')) {
+    ws.close();
+    return;
+  }
+  userMessageTimes.set(ws, []);
+
+  ws.on('message', (data) => {
+    let msgStr = data.toString();
+    if (msgStr.length > 4096) { send(ws, { type: 'flood' }); try { ws.close(); } catch(_){} return; }
+
+    pings.set(ws, now());
+
+    if (msgStr === 'ping') {
+      send(ws, 'id' + String(Math.max(0, idx - 1)));
+      if (!users.has(ws)) send(ws, { type: 'username' });
+      return;
+    }
+
+    // Flood control (track non-ping messages)
+    const arr = userMessageTimes.get(ws) || [];
+    arr.push(Date.now());
+    while (arr.length > 10) arr.shift();
+    userMessageTimes.set(ws, arr);
+    if (arr.length === 10 && (arr[arr.length - 1] - arr[0]) < 5000) {
+      send(ws, { type: 'flood' });
+      try { ws.close(); } catch(_){}
+      return;
+    }
+
+    let msg;
+    try { msg = JSON.parse(msgStr); } catch (_) { return; }
+
+    if (msg.type === 'message') {
+      let message = String(msg.message || '').trim();
+      let username = users.get(ws);
+      if (!username) {
+        username = cleanUsername(msg.username, ws);
+        users.set(ws, username);
+        usernameToWs.set(username, ws);
+        sendUserList();
+      }
+      if (message) {
+        if (message.length > 1000) message = message.slice(0, 1000) + '...';
+        const safeMessage = sanitizeHtml(message, { allowedTags: [], allowedAttributes: {} }).trim();
+        const obj = { type: 'message', message: safeMessage, username, id: idx, datetime: Math.floor(now()) };
+        messages[idx] = obj;
+        appendMessage(obj);
+        idx += 1;
+        const s = JSON.stringify(obj);
+        for (const [u] of users) send(u, s);
+      }
+    }
+    else if (msg.type === 'messagesbefore') {
+      const idbefore = Number(msg.id) || 0;
+      send(ws, { type: 'messages', before: 1, messages: messagesRange(Math.max(0, idbefore - 100), idbefore) });
+    }
+    else if (msg.type === 'messagesafter') {
+      const idafter = Number(msg.id) || 0;
+      send(ws, { type: 'messages', before: 0, messages: messagesRange(idafter, idx) });
+    }
+    else if (msg.type === 'username') {
+      const username = cleanUsername(msg.username, ws);
+      const isNew = !users.has(ws);
+      users.set(ws, username);
+      usernameToWs.set(username, ws);
+      if (isNew) {
+        send(ws, { type: 'messages', before: 0, messages: messagesRange(Math.max(0, idx - 100), idx) });
+      }
+      sendUserList();
+    }
+    else if (msg.type === 'chess_invite') {
+      const inviter = users.get(ws);
+      const target = String(msg.to || '');
+      if (!inviter || !target || inviter === target) {
+        send(ws, { type: 'chess_error', message: 'Invalid invite' });
+      } else {
+        invites.set(inviter + '\u0000' + target, Date.now());
+        const ok = sendToUsername(target, { type: 'chess_invite', from: inviter });
+        if (!ok) send(ws, { type: 'chess_error', message: 'User not available' });
+      }
+    }
+    else if (msg.type === 'chess_invite_accept') {
+      const target = users.get(ws); // acceptor
+      const inviter = String(msg.from || '');
+      const key = inviter + '\u0000' + target;
+      if (!inviter || !target || !invites.has(key)) {
+        send(ws, { type: 'chess_error', message: 'Invite not found' });
+      } else {
+        const gid = nextGameId++;
+        const board = new ChessCtor();
+        let white, black;
+        if (Math.random() < 0.5) { white = inviter; black = target; } else { white = target; black = inviter; }
+        games.set(gid, { board, white, black, over: false });
+        const payload = { type: 'chess_start', game_id: gid, white, black, fen: board.fen(), turn: 'white' };
+        sendToUsername(white, payload); sendToUsername(black, payload);
+        invites.delete(key);
+      }
+    }
+    else if (msg.type === 'chess_move') {
+      const gid = msg.game_id;
+      const src = String(msg.from || '');
+      const dst = String(msg.to || '');
+      const promo = (msg.promotion || '').toLowerCase();
+      const player = users.get(ws);
+      if (!games.has(gid)) { send(ws, { type: 'chess_error', message: 'Game not found' }); return; }
+      const g = games.get(gid);
+      const board = g.board;
+      if (g.over) { send(ws, { type: 'chess_error', message: 'Game over' }); return; }
+      const expected = board.turn() === 'w' ? g.white : g.black;
+      if (player !== expected) { send(ws, { type: 'chess_error', message: 'Not your turn' }); return; }
+      const moveSpec = { from: src, to: dst };
+      if (promo && ['q','r','b','n'].includes(promo)) moveSpec.promotion = promo;
+      const move = board.move(moveSpec);
+      if (move) {
+        const payload = { type: 'chess_move', game_id: gid, from: src, to: dst, promotion: move.promotion || null, san: move.san, fen: board.fen(), turn: board.turn() === 'w' ? 'white' : 'black', check: board.in_check() };
+        sendToUsername(g.white, payload); sendToUsername(g.black, payload);
+        if (board.game_over()) {
+          g.over = true;
+          let result;
+          if (board.in_checkmate()) result = board.turn() === 'w' ? '0-1' : '1-0';
+          else if (board.in_stalemate() || board.in_draw()) result = '1/2-1/2';
+          else result = '1/2-1/2';
+          const reason = board.in_checkmate() ? 'checkmate' : (board.in_stalemate() ? 'stalemate' : 'draw');
+          const over = { type: 'chess_over', game_id: gid, result, reason, fen: board.fen() };
+          sendToUsername(g.white, over); sendToUsername(g.black, over);
+        }
+      } else {
+        send(ws, { type: 'chess_illegal', reason: 'illegal' });
+      }
+    }
+    else if (msg.type === 'chess_resign') {
+      const gid = msg.game_id;
+      const player = users.get(ws);
+      if (games.has(gid)) {
+        const g = games.get(gid);
+        if (!g.over) {
+          g.over = true;
+          const winner = player === g.white ? g.black : g.white;
+          const result = winner === g.white ? '1-0' : '0-1';
+          const over = { type: 'chess_over', game_id: gid, result, reason: 'resign', fen: g.board.fen() };
+          sendToUsername(g.white, over); sendToUsername(g.black, over);
+        }
+      }
+    }
+  });
+
+  ws.on('close', () => {
+    const uname = users.get(ws);
+    users.delete(ws);
+    pings.delete(ws);
+    userMessageTimes.delete(ws);
+    if (usernameToWs.get(uname) === ws) usernameToWs.delete(uname);
+    sendUserList();
+  });
+});
+
+server.listen(PORT, HOST, () => {
+  console.log(`Server listening on http://${HOST}:${PORT}`);
+});
