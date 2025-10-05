@@ -25,6 +25,7 @@ from collections import deque
 from config import PORT, HOST, ADMINNAME, ADMINHIDDENNAME, ALLOWEDTAGS
 
 idx = 0
+next_game_id = 1
 
 def websocket(callback):
     def wrapper(*args, **kwargs):
@@ -47,7 +48,6 @@ def main():
     username_to_ws = {}
     invites = {}              # key: (inviter, target) -> timestamp
     games = {}                # key: game_id -> {'board': chess.Board(), 'white': str, 'black': str, 'over': bool}
-    next_game_id = 1
 
     def send_userlist():
         for u in users.keys():
@@ -170,7 +170,7 @@ def main():
                                 ws.send(json.dumps({'type': 'chess_error', 'message': 'Invite not found'}))
                             else:
                                 # create game
-                                nonlocal next_game_id
+                                global next_game_id
                                 gid = next_game_id
                                 next_game_id += 1
                                 board = chess.Board()
