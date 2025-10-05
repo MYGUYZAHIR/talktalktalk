@@ -1061,7 +1061,7 @@ function clearSelection() {
 function requiresPromotion(pieceCode, targetSquare) {
     if (!pieceCode || pieceCode.charAt(1) !== 'p') return false;
     var rank = parseInt(String(targetSquare).charAt(1), 10);
-    if (Number.isNaN(rank)) return false;
+    if (isNaN(rank)) return false;
     if (pieceCode.charAt(0) === 'w') return rank === 8;
     return rank === 1;
 }
