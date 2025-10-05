@@ -440,6 +440,7 @@ html {
 #invites .user-row { display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0; }
 .invite-user-btn { padding: 0.125rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--accent-primary); cursor: pointer; font-size: 0.75rem; }
 .invite-user-btn:hover { background: var(--accent-secondary); }
+.link-sent { margin-left: 0.5rem; color: var(--text-secondary); font-size: 0.75rem; }
 
 #chess-modal { z-index: 1000; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 95vw; max-width: 720px; background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); padding: 1rem; }
 .chess-layout { display: grid; grid-template-columns: 1fr 240px; gap: 1rem; }
@@ -935,6 +936,11 @@ function ready() {
         var toUser = $(this).data('user');
         ws.send(JSON.stringify({ type: 'chess_invite', to: toUser }));
         flashStatus('Invite sent to ' + toUser);
+        var row = $(this).closest('.user-row');
+        row.find('.link-sent').remove();
+        var msg = $('<span class="link-sent">link sent</span>');
+        row.append(msg);
+        setTimeout(function(){ msg.fadeOut(400, function(){ $(this).remove(); }); }, 3000);
     });
     $('#invites').on('click', '.invite-accept', function() {
         var fromUser = $(this).closest('.invite-item').data('from');
