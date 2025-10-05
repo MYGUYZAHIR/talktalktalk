@@ -1037,6 +1037,89 @@ function renderBoard() {
     }
 }
 
+function squarePieceCode(sq) {
+    if (!chessGame || !chessGame.squareMap) return null;
+    return chessGame.squareMap[sq] || null;
+}
+
+function isPlayersPiece(pieceCode) {
+    if (!chessGame || !pieceCode) return false;
+    if (pieceCode.charAt(0) === 'w') return chessGame.color === 'white';
+    if (pieceCode.charAt(0) === 'b') return chessGame.color === 'black';
+    return false;
+}
+
+function clearSelection() {
+    selectedSquare = null;
+    $('#chess-board .chess-square').removeClass('selected');
+}
+
+function requiresPromotion(pieceCode, targetSquare) {
+    if (!pieceCode || pieceCode.charAt(1) !== 'p') return false;
+    var rank = parseInt(String(targetSquare).charAt(1), 10);
+    if (Number.isNaN(rank)) return false;
+    if (pieceCode.charAt(0) === 'w') return rank === 8;
+    return rank === 1;
+}
+
+function openPromotionDialog(from, to, pieceCode) {
+    pendingPromotion = { from: from, to: to, color: pieceCode.charAt(0) };
+    var options = $('#promotion-options');
+    options.empty();
+    var prefix = pendingPromotion.color;
+    ['q','r','b','n'].forEach(function(symbol) {
+        var option = $('<button type="button" class="promotion-choice" />').attr('data-promotion', symbol);
+        option.append($('<div/>').addClass('promotion-piece').addClass('piece-' + prefix + symbol));
+        options.append(option);
+    });
+    $('#chess-board .chess-square').removeClass('selected');
+    $('#chess-board .chess-square[data-square="' + from + '"]').addClass('selected');
+    $('#chess-board .chess-square[data-square="' + to + '"]').addClass('selected');
+    selectedSquare = from;
+    $('#promotion-overlay').removeClass('hidden');
+}
+
+function hidePromotionDialog() {
+    pendingPromotion = null;
+    $('#promotion-overlay').addClass('hidden');
+    $('#promotion-options').empty();
+    clearSelection();
+}
+
+function sendMove(from, to, promotion) {
+    if (!chessGame) return;
+    var payload = { type: 'chess_move', game_id: chessGame.id, from: from, to: to };
+    if (promotion) payload.promotion = promotion;
+    ws.send(JSON.stringify(payload));
+    clearSelection();
+    $('#chess-board .chess-square').removeClass('drag-over');
+}
+
+function attemptMove(from, to) {
+    if (!chessGame || pendingPromotion) return;
+    var myTurn = chessGame.turn === chessGame.color;
+    if (!myTurn) {
+        flashStatus('Wait your turn');
+        return;
+    }
+    if (!from || !to || from === to) return;
+    var pieceCode = squarePieceCode(from);
+    if (!pieceCode) {
+        clearSelection();
+        return;
+    }
+    if (!isPlayersPiece(pieceCode)) {
+        flashStatus('Not your piece');
+        clearSelection();
+        return;
+    }
+    if (requiresPromotion(pieceCode, to)) {
+        openPromotionDialog(from, to, pieceCode);
+    } else {
+        sendMove(from, to, null);
+    }
+}
+
 function onSquareClick() {
     if (!chessGame || pendingPromotion) return;
     var sq = $(this).data('square');
