@@ -1147,6 +1147,63 @@ function onSquareClick() {
     attemptMove(selectedSquare, sq);
 }
 
+function onPieceDragStart(e) {
+    if (!chessGame || pendingPromotion) { e.preventDefault(); return; }
+    var parentSquare = $(this).parent().data('square');
+    var pieceCode = squarePieceCode(parentSquare);
+    if (!pieceCode) { e.preventDefault(); return; }
+    if (!isPlayersPiece(pieceCode)) { flashStatus('Not your piece'); e.preventDefault(); return; }
+    if (chessGame.turn !== chessGame.color) { flashStatus('Wait your turn'); e.preventDefault(); return; }
+    dragSourceSquare = parentSquare;
+    $('#chess-board .chess-square').removeClass('selected');
+    $('#chess-board .chess-square[data-square="' + parentSquare + '"]').addClass('selected');
+    selectedSquare = parentSquare;
+    $(this).addClass('dragging');
+    var dt = e.originalEvent && e.originalEvent.dataTransfer;
+    if (dt) {
+        dt.setData('text/plain', parentSquare);
+        dt.effectAllowed = 'move';
+    }
+}
+
+function onPieceDragEnd() {
+    $(this).removeClass('dragging');
+    dragSourceSquare = null;
+    clearSelection();
+    $('#chess-board .chess-square').removeClass('drag-over');
+}
+
+function onSquareDragOver(e) {
+    if (!dragSourceSquare) return;
+    e.preventDefault();
+    $(this).addClass('drag-over');
+}
+
+function onSquareDragLeave() {
+    $(this).removeClass('drag-over');
+}
+
+function onSquareDrop(e) {
+    if (!dragSourceSquare) return;
+    e.preventDefault();
+    var target = $(this).data('square');
+    $('#chess-board .chess-piece.dragging').removeClass('dragging');
+    $('#chess-board .chess-square').removeClass('drag-over');
+    var from = dragSourceSquare;
+    dragSourceSquare = null;
+    attemptMove(from, target);
+}
+
+function onPromotionChoice() {
+    if (!pendingPromotion) return;
+    var details = pendingPromotion;
+    var promotion = $(this).data('promotion');
+    hidePromotionDialog();
+    if (details && promotion) {
+        sendMove(details.from, details.to, promotion);
+    }
+}
+
 function updateChessStatus() {
     var turnName = (chessGame.turn === 'white') ? chessGame.white : chessGame.black;
     $('#chess-status').text('Turn: ' + turnName);
