@@ -456,7 +456,8 @@ html {
 .chess-button:hover { background: var(--accent-secondary); color: var(--accent-primary); }
 
 /* Pieces (Staunton-style via external assets) */
-.chess-piece { position: absolute; inset: 0; background-position: center; background-repeat: no-repeat; background-size: 80% auto; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); pointer-events: none; }
+.chess-piece { position: absolute; inset: 0; background-position: center; background-repeat: no-repeat; background-size: 80% auto; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); pointer-events: auto; cursor: grab; }
+.chess-piece.dragging { cursor: grabbing; opacity: 0.6; }
 /* White */
 .piece-wk { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wK.png'); }
 .piece-wq { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wQ.png'); }
