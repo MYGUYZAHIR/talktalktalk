@@ -993,7 +993,11 @@ function renderBoard() {
     if (!chessGame) return;
     var board = $('#chess-board');
     board.empty();
-    clearSelection();
+    if (pendingPromotion) {
+        hidePromotionDialog();
+    } else {
+        clearSelection();
+    }
     dragSourceSquare = null;
     chessGame.squareMap = {};
     var parts = chessGame.fen.split(' ');
