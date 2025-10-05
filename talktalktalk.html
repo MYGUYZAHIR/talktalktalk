@@ -448,6 +448,7 @@ html {
 .chess-square.dark { background: var(--chess-dark); }
 .chess-square.selected { outline: 3px solid var(--accent-primary); outline-offset: -3px; }
 .chess-square.lastmove { box-shadow: inset 0 0 0 3px rgba(246, 223, 99, 0.45); }
+.chess-square.drag-over { outline: 3px solid var(--accent-primary); outline-offset: -3px; }
 .chess-panel { border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 0.75rem; height: 100%; display: flex; flex-direction: column; gap: 0.5rem; }
 .chess-panel h4 { margin-bottom: 0.25rem; color: var(--text-secondary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .chess-status { min-height: 1.5rem; color: var(--text-secondary); }
@@ -456,21 +457,34 @@ html {
 .chess-button:hover { background: var(--accent-secondary); color: var(--accent-primary); }
 
 /* Pieces (Staunton-style via external assets) */
-.chess-piece { position: absolute; inset: 0; background-position: center; background-repeat: no-repeat; background-size: 80% auto; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); pointer-events: none; }
+.chess-piece { position: absolute; inset: 0; background-position: center; background-repeat: no-repeat; background-size: 80% auto; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); pointer-events: auto; cursor: grab; }
+.chess-piece.dragging { cursor: grabbing; opacity: 0.6; }
 /* White */
-.piece-wk { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/wk.png'); }
-.piece-wq { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/wq.png'); }
-.piece-wr { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/wr.png'); }
-.piece-wb { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/wb.png'); }
-.piece-wn { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/wn.png'); }
-.piece-wp { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/wp.png'); }
+.piece-wk { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wK.png'); }
+.piece-wq { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wQ.png'); }
+.piece-wr { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wR.png'); }
+.piece-wb { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wB.png'); }
+.piece-wn { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wN.png'); }
+.piece-wp { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wP.png'); }
 /* Black */
-.piece-bk { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/bk.png'); }
-.piece-bq { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/bq.png'); }
-.piece-br { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/br.png'); }
-.piece-bb { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/bb.png'); }
-.piece-bn { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/bn.png'); }
-.piece-bp { background-image: url('https://images.chesscomfiles.com/chess-themes/pieces/staunton/150/bp.png'); }
+.piece-bk { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bK.png'); }
+.piece-bq { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bQ.png'); }
+.piece-br { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bR.png'); }
+.piece-bb { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bB.png'); }
+.piece-bn { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bN.png'); }
+.piece-bp { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bP.png'); }
+
+.promotion-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10; }
+.promotion-overlay::after { content: ''; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.35); }
+.promotion-overlay-panel { position: relative; background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; min-width: 200px; z-index: 1; }
+.promotion-overlay-title { font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
+.promotion-overlay-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+.promotion-choice { border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--bg-secondary); height: 3rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
+.promotion-choice:hover { background: var(--accent-secondary); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.promotion-piece { width: 2.25rem; height: 2.25rem; background-position: center; background-repeat: no-repeat; background-size: 90% auto; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2)); }
+.promotion-overlay-actions { display: flex; justify-content: center; }
+.promotion-cancel { padding: 0.5rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--bg-secondary); cursor: pointer; font-size: 0.875rem; }
+.promotion-cancel:hover { background: var(--accent-secondary); color: var(--accent-primary); }
 
 @media (max-width: 768px) {
   .chess-layout { grid-template-columns: 1fr; }
@@ -535,6 +549,15 @@ html {
       </div>
     </div>
   </div>
+  <div id="promotion-overlay" class="promotion-overlay hidden">
+    <div class="promotion-overlay-panel">
+      <div class="promotion-overlay-title">Choose promotion</div>
+      <div class="promotion-overlay-options" id="promotion-options"></div>
+      <div class="promotion-overlay-actions">
+        <button class="promotion-cancel" id="promotion-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
 </div>
 <script type="text/javascript">
 var popsound = new Audio('popsound.mp3');
@@ -550,6 +573,8 @@ var loop;
 // Chess state
 var chessGame = null; // {id, white, black, color, fen, turn, lastMove}
 var selectedSquare = null;
+var dragSourceSquare = null;
+var pendingPromotion = null;
 
 function is_scrolled_end() { // See http://stackoverflow.com/a/40370876/1422096
     return ((window.innerHeight + window.pageYOffset) >= document.body.offsetHeight);
@@ -917,7 +942,15 @@ function ready() {
     // Chess modal controls
     $('#chess-close').on('click', function(){ $('#chess-modal').addClass('hidden'); });
     $('#chess-resign').on('click', function(){ if (chessGame) { ws.send(JSON.stringify({ type: 'chess_resign', game_id: chessGame.id })); } });
-    $('#chess-board').on('click', '.chess-square', onSquareClick);
+    $('#chess-board')
+        .on('click', '.chess-square', onSquareClick)
+        .on('dragstart', '.chess-piece', onPieceDragStart)
+        .on('dragend', '.chess-piece', onPieceDragEnd)
+        .on('dragover', '.chess-square', onSquareDragOver)
+        .on('dragleave', '.chess-square', onSquareDragLeave)
+        .on('drop', '.chess-square', onSquareDrop);
+    $('#promotion-options').on('click', '.promotion-choice', onPromotionChoice);
+    $('#promotion-cancel').on('click', function(){ hidePromotionDialog(); });
 }
 
 function renderConnectedList() {
@@ -957,14 +990,23 @@ function startChessGame(data) {
 }
 
 function renderBoard() {
+    if (!chessGame) return;
     var board = $('#chess-board');
     board.empty();
+    if (pendingPromotion) {
+        hidePromotionDialog();
+    } else {
+        clearSelection();
+    }
+    dragSourceSquare = null;
+    chessGame.squareMap = {};
     var parts = chessGame.fen.split(' ');
     var ranks = parts[0].split('/');
     if (chessGame.color !== 'white') {
         ranks = ranks.slice().reverse();
     }
     var files = ['a','b','c','d','e','f','g','h'];
+    var filesReversed = files.slice().reverse();
     var mapPiece = { 'P':'wp','N':'wn','B':'wb','R':'wr','Q':'wq','K':'wk','p':'bp','n':'bn','b':'bb','r':'br','q':'bq','k':'bk' };
     for (var r = 0; r < 8; r++) {
         var row = ranks[r];
@@ -984,41 +1026,185 @@ function renderBoard() {
         }
     }
     function appendSquare(r, f, pieceCode) {
-        var file = (chessGame.color === 'white') ? files[f] : files.slice().reverse()[f];
+        var file = (chessGame.color === 'white') ? files[f] : filesReversed[f];
         var rank = (chessGame.color === 'white') ? (8 - r) : (r + 1);
         var sq = file + String(rank);
         var light = ((r + f) % 2) === 0;
         var el = $('<div class="chess-square" />').addClass(light ? 'light' : 'dark').attr('data-square', sq);
         if (pieceCode) {
-            el.append($('<div/>').addClass('chess-piece').addClass('piece-' + pieceCode));
+            chessGame.squareMap[sq] = pieceCode;
+            var pieceEl = $('<div/>').addClass('chess-piece').addClass('piece-' + pieceCode).attr('draggable', true).attr('data-square', sq).attr('data-piece', pieceCode);
+            el.append(pieceEl);
         }
         if (chessGame.lastMove && (sq === chessGame.lastMove.from || sq === chessGame.lastMove.to)) el.addClass('lastmove');
         board.append(el);
     }
 }
 
-function onSquareClick() {
+function squarePieceCode(sq) {
+    if (!chessGame || !chessGame.squareMap) return null;
+    return chessGame.squareMap[sq] || null;
+}
+
+function isPlayersPiece(pieceCode) {
+    if (!chessGame || !pieceCode) return false;
+    if (pieceCode.charAt(0) === 'w') return chessGame.color === 'white';
+    if (pieceCode.charAt(0) === 'b') return chessGame.color === 'black';
+    return false;
+}
+
+function clearSelection() {
+    selectedSquare = null;
+    $('#chess-board .chess-square').removeClass('selected');
+}
+
+function requiresPromotion(pieceCode, targetSquare) {
+    if (!pieceCode || pieceCode.charAt(1) !== 'p') return false;
+    var rank = parseInt(String(targetSquare).charAt(1), 10);
+    if (isNaN(rank)) return false;
+    if (pieceCode.charAt(0) === 'w') return rank === 8;
+    return rank === 1;
+}
+
+function openPromotionDialog(from, to, pieceCode) {
+    pendingPromotion = { from: from, to: to, color: pieceCode.charAt(0) };
+    var options = $('#promotion-options');
+    options.empty();
+    var prefix = pendingPromotion.color;
+    ['q','r','b','n'].forEach(function(symbol) {
+        var option = $('<button type="button" class="promotion-choice" />').attr('data-promotion', symbol);
+        option.append($('<div/>').addClass('promotion-piece').addClass('piece-' + prefix + symbol));
+        options.append(option);
+    });
+    $('#chess-board .chess-square').removeClass('selected');
+    $('#chess-board .chess-square[data-square="' + from + '"]').addClass('selected');
+    $('#chess-board .chess-square[data-square="' + to + '"]').addClass('selected');
+    selectedSquare = from;
+    $('#promotion-overlay').removeClass('hidden');
+}
+
+function hidePromotionDialog() {
+    pendingPromotion = null;
+    $('#promotion-overlay').addClass('hidden');
+    $('#promotion-options').empty();
+    clearSelection();
+}
+
+function sendMove(from, to, promotion) {
     if (!chessGame) return;
-    var me = $('#username').text();
+    var payload = { type: 'chess_move', game_id: chessGame.id, from: from, to: to };
+    if (promotion) payload.promotion = promotion;
+    ws.send(JSON.stringify(payload));
+    clearSelection();
+    $('#chess-board .chess-square').removeClass('drag-over');
+}
+
+function attemptMove(from, to) {
+    if (!chessGame || pendingPromotion) return;
     var myTurn = chessGame.turn === chessGame.color;
-    if (!myTurn) { flashStatus("Wait your turn"); return; }
+    if (!myTurn) {
+        flashStatus('Wait your turn');
+        return;
+    }
+    if (!from || !to || from === to) return;
+    var pieceCode = squarePieceCode(from);
+    if (!pieceCode) {
+        clearSelection();
+        return;
+    }
+    if (!isPlayersPiece(pieceCode)) {
+        flashStatus('Not your piece');
+        clearSelection();
+        return;
+    }
+    if (requiresPromotion(pieceCode, to)) {
+        openPromotionDialog(from, to, pieceCode);
+    } else {
+        sendMove(from, to, null);
+    }
+}
+
+function onSquareClick() {
+    if (!chessGame || pendingPromotion) return;
     var sq = $(this).data('square');
+    var pieceCode = squarePieceCode(sq);
+    var myTurn = chessGame.turn === chessGame.color;
     if (!selectedSquare) {
+        if (!pieceCode) return;
+        if (!myTurn) { flashStatus('Wait your turn'); return; }
+        if (!isPlayersPiece(pieceCode)) { flashStatus('Not your piece'); return; }
         selectedSquare = sq;
         $('#chess-board .chess-square').removeClass('selected');
         $(this).addClass('selected');
-    } else {
-        if (sq === selectedSquare) { selectedSquare = null; $('#chess-board .chess-square').removeClass('selected'); return; }
-        // Simple auto-queen promotion detection
-        var promo = null;
-        if (/[1-8]/.test(sq.slice(1)) && /[1-8]/.test(selectedSquare.slice(1))) {
-            var fromRank = parseInt(selectedSquare[1],10), toRank = parseInt(sq[1],10);
-            if (chessGame.color === 'white' && fromRank === 7 && toRank === 8) promo = 'q';
-            if (chessGame.color === 'black' && fromRank === 2 && toRank === 1) promo = 'q';
-        }
-        ws.send(JSON.stringify({ type: 'chess_move', game_id: chessGame.id, from: selectedSquare, to: sq, promotion: promo }));
-        selectedSquare = null;
+        return;
+    }
+    if (selectedSquare === sq) {
+        clearSelection();
+        return;
+    }
+    if (pieceCode && isPlayersPiece(pieceCode) && myTurn) {
+        selectedSquare = sq;
         $('#chess-board .chess-square').removeClass('selected');
+        $(this).addClass('selected');
+        return;
+    }
+    attemptMove(selectedSquare, sq);
+}
+
+function onPieceDragStart(e) {
+    if (!chessGame || pendingPromotion) { e.preventDefault(); return; }
+    var parentSquare = $(this).parent().data('square');
+    var pieceCode = squarePieceCode(parentSquare);
+    if (!pieceCode) { e.preventDefault(); return; }
+    if (!isPlayersPiece(pieceCode)) { flashStatus('Not your piece'); e.preventDefault(); return; }
+    if (chessGame.turn !== chessGame.color) { flashStatus('Wait your turn'); e.preventDefault(); return; }
+    dragSourceSquare = parentSquare;
+    $('#chess-board .chess-square').removeClass('selected');
+    $('#chess-board .chess-square[data-square="' + parentSquare + '"]').addClass('selected');
+    selectedSquare = parentSquare;
+    $(this).addClass('dragging');
+    var dt = e.originalEvent && e.originalEvent.dataTransfer;
+    if (dt) {
+        dt.setData('text/plain', parentSquare);
+        dt.effectAllowed = 'move';
+    }
+}
+
+function onPieceDragEnd() {
+    $(this).removeClass('dragging');
+    dragSourceSquare = null;
+    clearSelection();
+    $('#chess-board .chess-square').removeClass('drag-over');
+}
+
+function onSquareDragOver(e) {
+    if (!dragSourceSquare) return;
+    e.preventDefault();
+    $(this).addClass('drag-over');
+}
+
+function onSquareDragLeave() {
+    $(this).removeClass('drag-over');
+}
+
+function onSquareDrop(e) {
+    if (!dragSourceSquare) return;
+    e.preventDefault();
+    var target = $(this).data('square');
+    $('#chess-board .chess-piece.dragging').removeClass('dragging');
+    $('#chess-board .chess-square').removeClass('drag-over');
+    var from = dragSourceSquare;
+    dragSourceSquare = null;
+    attemptMove(from, target);
+}
+
+function onPromotionChoice() {
+    if (!pendingPromotion) return;
+    var details = pendingPromotion;
+    var promotion = $(this).data('promotion');
+    hidePromotionDialog();
+    if (details && promotion) {
+        sendMove(details.from, details.to, promotion);
     }
 }
 
