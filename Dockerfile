@@ -1,10 +1,18 @@
 FROM python:2.7
 
-RUN pip install bottle bleach gevent gevent-websocket
-ADD . /opt/app/talktalktalk
+FROM python:3.11-slim
+
 WORKDIR /opt/app/talktalktalk
 
-#  Update Config For Docker bind host
+# Install dependencies (including python-chess)
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy app
+COPY . .
+
+# Update Config For Docker bind host
 RUN sed -i "s/HOST =.*/HOST = \"0\.0\.0\.0\"/g" config.py
+
 EXPOSE 9000
-CMD python talktalktalk.py
+CMD ["python", "talktalktalk.py"]
