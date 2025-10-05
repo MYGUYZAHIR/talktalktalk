@@ -999,45 +999,52 @@ function renderBoard() {
         clearSelection();
     }
     dragSourceSquare = null;
-    chessGame.squareMap = {};
+
+    // Build a map of actual board squares -> piece codes from the FEN
     var parts = chessGame.fen.split(' ');
-    var ranks = parts[0].split('/');
-    if (chessGame.color !== 'white') {
-        ranks = ranks.slice().reverse();
-    }
+    var ranksFEN = parts[0].split('/');
     var files = ['a','b','c','d','e','f','g','h'];
-    var filesReversed = files.slice().reverse();
     var mapPiece = { 'P':'wp','N':'wn','B':'wb','R':'wr','Q':'wq','K':'wk','p':'bp','n':'bn','b':'bb','r':'br','q':'bq','k':'bk' };
+    chessGame.squareMap = {};
     for (var r = 0; r < 8; r++) {
-        var row = ranks[r];
+        var row = ranksFEN[r];
         var fileIndex = 0;
         for (var i = 0; i < row.length; i++) {
             var ch = row[i];
             if (/[1-8]/.test(ch)) {
-                var empties = parseInt(ch, 10);
-                for (var e = 0; e < empties; e++) {
-                    appendSquare(r, fileIndex, null);
-                    fileIndex++;
-                }
+                fileIndex += parseInt(ch, 10);
             } else {
-                appendSquare(r, fileIndex, mapPiece[ch] || null);
+                var file = files[fileIndex];
+                var rank = 8 - r; // FEN rows start at rank 8
+                var sq = file + String(rank);
+                var pieceCode = mapPiece[ch] || null;
+                if (pieceCode) chessGame.squareMap[sq] = pieceCode;
                 fileIndex++;
             }
         }
     }
-    function appendSquare(r, f, pieceCode) {
-        var file = (chessGame.color === 'white') ? files[f] : filesReversed[f];
-        var rank = (chessGame.color === 'white') ? (8 - r) : (r + 1);
-        var sq = file + String(rank);
-        var light = ((r + f) % 2) === 0;
+
+    function appendSquare(sq) {
+        var fIndex = sq.charCodeAt(0) - 97; // 'a' -> 0
+        var rNum = parseInt(sq.charAt(1), 10);
+        var light = ((fIndex + rNum) % 2) === 0;
         var el = $('<div class="chess-square" />').addClass(light ? 'light' : 'dark').attr('data-square', sq);
+        var pieceCode = chessGame.squareMap[sq];
         if (pieceCode) {
-            chessGame.squareMap[sq] = pieceCode;
             var pieceEl = $('<div/>').addClass('chess-piece').addClass('piece-' + pieceCode).attr('draggable', true).attr('data-square', sq).attr('data-piece', pieceCode);
             el.append(pieceEl);
         }
         if (chessGame.lastMove && (sq === chessGame.lastMove.from || sq === chessGame.lastMove.to)) el.addClass('lastmove');
         board.append(el);
+    }
+
+    // Render squares in the correct visual orientation without altering actual coordinates
+    var rankOrder = (chessGame.color === 'white') ? [8,7,6,5,4,3,2,1] : [1,2,3,4,5,6,7,8];
+    var fileOrder = (chessGame.color === 'white') ? files : files.slice().reverse();
+    for (var ri = 0; ri < rankOrder.length; ri++) {
+        for (var fi = 0; fi < fileOrder.length; fi++) {
+            appendSquare(fileOrder[fi] + String(rankOrder[ri]));
+        }
     }
 }
 
