@@ -40,6 +40,15 @@ class GeventWebSocketServer(ServerAdapter):
 def main():
     global idx
     db = dumbdbm.open('talktalktalk.db', 'c')
+
+    def db_get_str(i):
+        v = db[str(i)]
+        if isinstance(v, bytes):
+            try:
+                return v.decode('utf-8')
+            except UnicodeDecodeError:
+                return v.decode('latin-1', 'replace')
+        return v
     idx = len(db)
 
     users = {}
@@ -235,16 +244,16 @@ def main():
 
                         elif msg['type'] == 'messagesbefore':
                             idbefore = msg['id']
-                            ws.send(json.dumps({'type' : 'messages', 'before': 1, 'messages': [db[str(i)] for i in range(max(0,idbefore - 100),idbefore)]}))
+                            ws.send(json.dumps({'type' : 'messages', 'before': 1, 'messages': [db_get_str(i) for i in range(max(0,idbefore - 100),idbefore)]}))
 
                         elif msg['type'] == 'messagesafter':
                             idafter = msg['id']
-                            ws.send(json.dumps({'type' : 'messages', 'before': 0, 'messages': [db[str(i)] for i in range(idafter,idx)]}))
+                            ws.send(json.dumps({'type' : 'messages', 'before': 0, 'messages': [db_get_str(i) for i in range(idafter,idx)]}))
 
                         elif msg['type'] == 'username':
                             username = clean_username(msg['username'], ws)
                             if ws not in users:          # welcome new user
-                                ws.send(json.dumps({'type' : 'messages', 'before': 0, 'messages': [db[str(i)] for i in range(max(0,idx - 100),idx)]}))
+                                ws.send(json.dumps({'type' : 'messages', 'before': 0, 'messages': [db_get_str(i) for i in range(max(0,idx - 100),idx)]}))
                             users[ws] = username
                             username_to_ws[username] = ws
                             send_userlist()
