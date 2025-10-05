@@ -800,7 +800,9 @@ function ready() {
         }
         else if (data['type'] === 'chess_over') {
             if (chessGame && chessGame.id === data['game_id']) {
+                chessGame.over = true;
                 $('#chess-status').text('Game over: ' + data['result'] + ' (' + data['reason'] + ')');
+                hideRejoinPrompt();
             }
         }
         else if (data['type'] === 'chess_illegal') {
@@ -942,7 +944,12 @@ function ready() {
     });
 
     // Chess modal controls
-    $('#chess-close').on('click', function(){ $('#chess-modal').addClass('hidden'); });
+    $('#chess-close').on('click', function(){
+        $('#chess-modal').addClass('hidden');
+        if (chessGame && !chessGame.over) {
+            showRejoinPrompt();
+        }
+    });
     $('#chess-resign').on('click', function(){ if (chessGame) { ws.send(JSON.stringify({ type: 'chess_resign', game_id: chessGame.id })); } });
     $('#chess-board')
         .on('click', '.chess-square', onSquareClick)
@@ -953,6 +960,15 @@ function ready() {
         .on('drop', '.chess-square', onSquareDrop);
     $('#promotion-options').on('click', '.promotion-choice', onPromotionChoice);
     $('#promotion-cancel').on('click', function(){ hidePromotionDialog(); });
+
+    // Rejoin button handler (delegated)
+    $('#invites').on('click', '#rejoin-game', function(){
+        if (chessGame && !chessGame.over) {
+            $('#chess-modal').removeClass('hidden');
+            renderBoard();
+            updateChessStatus();
+        }
+    });
 }
 
 function renderConnectedList() {
@@ -973,6 +989,19 @@ function addInvite(fromUser) {
     $('#invites').append(item);
 }
 
+function showRejoinPrompt() {
+    if (!$('#invites #rejoin-game').length) {
+        var wrap = $('<div class="invite-item" id="rejoin-wrapper" />');
+        var btn = $('<button class="invite-btn" id="rejoin-game">rejoin game?</button>');
+        wrap.append(btn);
+        $('#invites').append(wrap);
+    }
+}
+
+function hideRejoinPrompt() {
+    $('#rejoin-wrapper').remove();
+}
+
 function startChessGame(data) {
     var me = $('#username').text();
     chessGame = {
@@ -982,8 +1011,10 @@ function startChessGame(data) {
         color: (data['white'] === me) ? 'white' : 'black',
         fen: data['fen'],
         turn: data['turn'],
-        lastMove: null
+        lastMove: null,
+        over: false
     };
+    hideRejoinPrompt();
     $('#chess-white').text(chessGame.white);
     $('#chess-black').text(chessGame.black);
     $('#chess-status').text('Your color: ' + chessGame.color);
