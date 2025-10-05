@@ -430,6 +430,33 @@ html {
 #fork { 
     z-index: 10; 
 }
+/* Chess UI */
+#invites .invite-item { margin: 0.25rem 0; padding: 0.25rem 0; color: var(--text-secondary); }
+.invite-actions { display: inline-flex; gap: 0.5rem; margin-left: 0.5rem; }
+.invite-btn { padding: 0.125rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--bg-secondary); cursor: pointer; font-size: 0.75rem; }
+.invite-btn:hover { background: var(--accent-secondary); color: var(--accent-primary); }
+#connected .user-row { display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0; }
+.invite-user-btn { padding: 0.125rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--accent-primary); cursor: pointer; font-size: 0.75rem; }
+.invite-user-btn:hover { background: var(--accent-secondary); }
+
+#chess-modal { z-index: 1000; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 95vw; max-width: 720px; background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); padding: 1rem; }
+.chess-layout { display: grid; grid-template-columns: 1fr 240px; gap: 1rem; }
+.chess-board { width: 100%; aspect-ratio: 1 / 1; display: grid; grid-template-columns: repeat(8, 1fr); border: 1px solid var(--border-light); border-radius: var(--radius-lg); overflow: hidden; }
+.chess-square { display: flex; align-items: center; justify-content: center; font-size: 2rem; user-select: none; cursor: pointer; }
+.chess-square.light { background: #eee; }
+.chess-square.dark { background: #9bb4d3; }
+.chess-square.selected { outline: 3px solid var(--accent-primary); outline-offset: -3px; }
+.chess-square.lastmove { box-shadow: inset 0 0 0 3px rgba(59,130,246,0.35); }
+.chess-panel { border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 0.75rem; height: 100%; display: flex; flex-direction: column; gap: 0.5rem; }
+.chess-panel h4 { margin-bottom: 0.25rem; color: var(--text-secondary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.chess-status { min-height: 1.5rem; color: var(--text-secondary); }
+.chess-actions { margin-top: auto; display: flex; gap: 0.5rem; }
+.chess-button { padding: 0.5rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--bg-secondary); cursor: pointer; }
+.chess-button:hover { background: var(--accent-secondary); color: var(--accent-primary); }
+
+@media (max-width: 768px) {
+  .chess-layout { grid-template-columns: 1fr; }
+}
 </style>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 </head>
@@ -451,6 +478,11 @@ html {
     </div>
     
     <div>
+        <h3>Game Invites</h3>
+        <div id="invites"></div>
+    </div>
+
+    <div>
         <h3>Online Users</h3>
         <div id="connected"></div>
     </div>
@@ -471,6 +503,21 @@ html {
 </div>
 
 <div id="popup" class="hidden popup"></div>
+<div id="chess-modal" class="hidden">
+  <div class="chess-layout">
+    <div class="chess-board" id="chess-board"></div>
+    <div class="chess-panel">
+      <h4>Chess</h4>
+      <div class="chess-status" id="chess-status"></div>
+      <div>White: <span id="chess-white"></span></div>
+      <div>Black: <span id="chess-black"></span></div>
+      <div class="chess-actions">
+        <button class="chess-button" id="chess-resign">Resign</button>
+        <button class="chess-button" id="chess-close">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 <script type="text/javascript">
 var popsound = new Audio('popsound.mp3');
 var randomname = 'user' + Math.floor((Math.random() * 1000) + 1);
@@ -481,6 +528,10 @@ var users;
 var firstId;
 var lastId;
 var loop;
+
+// Chess state
+var chessGame = null; // {id, white, black, color, fen, turn, lastMove}
+var selectedSquare = null;
 
 function is_scrolled_end() { // See http://stackoverflow.com/a/40370876/1422096
     return ((window.innerHeight + window.pageYOffset) >= document.body.offsetHeight);
@@ -685,7 +736,33 @@ function ready() {
         }
         else if (data['type'] === 'userlist') {
             users = data['connected'];
-            $('#connected').html(users.join('<br>'));         // or .map(x => `${x}<br>`).join('')
+            renderConnectedList();
+        }
+        else if (data['type'] === 'chess_invite') {
+            addInvite(data['from']);
+        }
+        else if (data['type'] === 'chess_start') {
+            startChessGame(data);
+        }
+        else if (data['type'] === 'chess_move') {
+            if (chessGame && chessGame.id === data['game_id']) {
+                chessGame.fen = data['fen'];
+                chessGame.turn = data['turn'];
+                chessGame.lastMove = { from: data['from'], to: data['to'] };
+                renderBoard();
+                updateChessStatus();
+            }
+        }
+        else if (data['type'] === 'chess_over') {
+            if (chessGame && chessGame.id === data['game_id']) {
+                $('#chess-status').text('Game over: ' + data['result'] + ' (' + data['reason'] + ')');
+            }
+        }
+        else if (data['type'] === 'chess_illegal') {
+            flashStatus('Illegal move');
+        }
+        else if (data['type'] === 'chess_error') {
+            flashStatus(data['message'] || 'Error');
         }
         else if (data['type'] === 'username') {  // server asks to (re)send username
             ws.send(JSON.stringify({ "type" : "username", "username" : $('#username').text() }));
@@ -803,6 +880,141 @@ function ready() {
     $('#notificationswitch').click(function() {
         $('#notificationswitch').text($('#notificationswitch').text() === 'on' ? 'off' : 'on');
     });
+
+    // Delegated handlers for invites and users
+    $('#connected').on('click', '.invite-user-btn', function() {
+        var toUser = $(this).data('user');
+        ws.send(JSON.stringify({ type: 'chess_invite', to: toUser }));
+        flashStatus('Invite sent to ' + toUser);
+    });
+    $('#invites').on('click', '.invite-accept', function() {
+        var fromUser = $(this).closest('.invite-item').data('from');
+        ws.send(JSON.stringify({ type: 'chess_invite_accept', from: fromUser }));
+        $(this).closest('.invite-item').remove();
+    });
+    $('#invites').on('click', '.invite-decline', function() {
+        $(this).closest('.invite-item').remove();
+    });
+
+    // Chess modal controls
+    $('#chess-close').on('click', function(){ $('#chess-modal').addClass('hidden'); });
+    $('#chess-resign').on('click', function(){ if (chessGame) { ws.send(JSON.stringify({ type: 'chess_resign', game_id: chessGame.id })); } });
+    $('#chess-board').on('click', '.chess-square', onSquareClick);
+}
+
+function renderConnectedList() {
+    var me = $('#username').text();
+    var html = users.map(function(u){
+        if (u === me) return '<div class="user-row"><span>' + u + '</span></div>';
+        return '<div class="user-row"><span>' + u + '</span><button class="invite-user-btn" data-user="' + u + '">Invite</button></div>';
+    }).join('');
+    $('#connected').html(html);
+}
+
+function addInvite(fromUser) {
+    var item = $('<div class="invite-item" />').attr('data-from', fromUser).text('Invite from ' + fromUser);
+    var actions = $('<span class="invite-actions" />');
+    actions.append('<button class="invite-btn invite-accept">Accept</button>');
+    actions.append('<button class="invite-btn invite-decline">Decline</button>');
+    item.append(actions);
+    $('#invites').append(item);
+}
+
+function startChessGame(data) {
+    var me = $('#username').text();
+    chessGame = {
+        id: data['game_id'],
+        white: data['white'],
+        black: data['black'],
+        color: (data['white'] === me) ? 'white' : 'black',
+        fen: data['fen'],
+        turn: data['turn'],
+        lastMove: null
+    };
+    $('#chess-white').text(chessGame.white);
+    $('#chess-black').text(chessGame.black);
+    $('#chess-status').text('Your color: ' + chessGame.color);
+    renderBoard();
+    $('#chess-modal').removeClass('hidden');
+}
+
+function renderBoard() {
+    var board = $('#chess-board');
+    board.empty();
+    var parts = chessGame.fen.split(' ');
+    var ranks = parts[0].split('/');
+    if (chessGame.color === 'white') {
+        ranks = ranks; // a8..h1 natural, we will map squares accordingly
+    } else {
+        ranks = ranks.slice().reverse();
+    }
+    var files = ['a','b','c','d','e','f','g','h'];
+    var unicode = {
+        'P':'♙','N':'♘','B':'♗','R':'♖','Q':'♕','K':'♔',
+        'p':'♟','n':'♞','b':'♝','r':'♜','q':'♛','k':'♚'
+    };
+    for (var r = 0; r < 8; r++) {
+        var row = ranks[r];
+        var fileIndex = 0;
+        for (var i = 0; i < row.length; i++) {
+            var ch = row[i];
+            if (/[1-8]/.test(ch)) {
+                var empties = parseInt(ch, 10);
+                for (var e = 0; e < empties; e++) {
+                    appendSquare(r, fileIndex, '');
+                    fileIndex++;
+                }
+            } else {
+                appendSquare(r, fileIndex, unicode[ch] || '');
+                fileIndex++;
+            }
+        }
+    }
+    function appendSquare(r, f, text) {
+        var file = (chessGame.color === 'white') ? files[f] : files.slice().reverse()[f];
+        var rank = (chessGame.color === 'white') ? (8 - r) : (r + 1);
+        var sq = file + String(rank);
+        var light = ((r + f) % 2) === 0;
+        var el = $('<div class="chess-square" />').addClass(light ? 'light' : 'dark').attr('data-square', sq).text(text);
+        if (chessGame.lastMove && (sq === chessGame.lastMove.from || sq === chessGame.lastMove.to)) el.addClass('lastmove');
+        board.append(el);
+    }
+}
+
+function onSquareClick() {
+    if (!chessGame) return;
+    var me = $('#username').text();
+    var myTurn = chessGame.turn === chessGame.color;
+    if (!myTurn) { flashStatus("Wait your turn"); return; }
+    var sq = $(this).data('square');
+    if (!selectedSquare) {
+        selectedSquare = sq;
+        $('#chess-board .chess-square').removeClass('selected');
+        $(this).addClass('selected');
+    } else {
+        if (sq === selectedSquare) { selectedSquare = null; $('#chess-board .chess-square').removeClass('selected'); return; }
+        // Simple auto-queen promotion detection
+        var promo = null;
+        if (/[1-8]/.test(sq.slice(1)) && /[1-8]/.test(selectedSquare.slice(1))) {
+            var fromRank = parseInt(selectedSquare[1],10), toRank = parseInt(sq[1],10);
+            if (chessGame.color === 'white' && fromRank === 7 && toRank === 8) promo = 'q';
+            if (chessGame.color === 'black' && fromRank === 2 && toRank === 1) promo = 'q';
+        }
+        ws.send(JSON.stringify({ type: 'chess_move', game_id: chessGame.id, from: selectedSquare, to: sq, promotion: promo }));
+        selectedSquare = null;
+        $('#chess-board .chess-square').removeClass('selected');
+    }
+}
+
+function updateChessStatus() {
+    var turnName = (chessGame.turn === 'white') ? chessGame.white : chessGame.black;
+    $('#chess-status').text('Turn: ' + turnName);
+}
+
+function flashStatus(text) {
+    if (!text) return;
+    $('#chess-status').text(text);
+    setTimeout(function(){ updateChessStatus(); }, 1500);
 }
 
 $(document).ready(ready);
