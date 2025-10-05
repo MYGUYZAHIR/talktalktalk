@@ -994,9 +994,8 @@ function addInvite(fromUser) {
 function showRejoinPrompt() {
     if (!$('#invites #rejoin-game').length) {
         var wrap = $('<div class="user-row" id="rejoin-wrapper" />');
-        var label = $('<span class="rejoin-label">Game in progress</span>');
-        var btn = $('<button class="invite-user-btn" id="rejoin-game">rejoin game?</button>');
-        wrap.append(label).append(btn);
+        var btn = $('<button class="invite-user-btn" id="rejoin-game">game in progress</button>');
+        wrap.append(btn);
         $('#invites').append(wrap);
     }
 }
