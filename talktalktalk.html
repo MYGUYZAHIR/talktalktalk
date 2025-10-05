@@ -990,14 +990,19 @@ function startChessGame(data) {
 }
 
 function renderBoard() {
+    if (!chessGame) return;
     var board = $('#chess-board');
     board.empty();
+    clearSelection();
+    dragSourceSquare = null;
+    chessGame.squareMap = {};
     var parts = chessGame.fen.split(' ');
     var ranks = parts[0].split('/');
     if (chessGame.color !== 'white') {
         ranks = ranks.slice().reverse();
     }
     var files = ['a','b','c','d','e','f','g','h'];
+    var filesReversed = files.slice().reverse();
     var mapPiece = { 'P':'wp','N':'wn','B':'wb','R':'wr','Q':'wq','K':'wk','p':'bp','n':'bn','b':'bb','r':'br','q':'bq','k':'bk' };
     for (var r = 0; r < 8; r++) {
         var row = ranks[r];
@@ -1017,13 +1022,15 @@ function renderBoard() {
         }
     }
     function appendSquare(r, f, pieceCode) {
-        var file = (chessGame.color === 'white') ? files[f] : files.slice().reverse()[f];
+        var file = (chessGame.color === 'white') ? files[f] : filesReversed[f];
         var rank = (chessGame.color === 'white') ? (8 - r) : (r + 1);
         var sq = file + String(rank);
         var light = ((r + f) % 2) === 0;
         var el = $('<div class="chess-square" />').addClass(light ? 'light' : 'dark').attr('data-square', sq);
         if (pieceCode) {
-            el.append($('<div/>').addClass('chess-piece').addClass('piece-' + pieceCode));
+            chessGame.squareMap[sq] = pieceCode;
+            var pieceEl = $('<div/>').addClass('chess-piece').addClass('piece-' + pieceCode).attr('draggable', true).attr('data-square', sq).attr('data-piece', pieceCode);
+            el.append(pieceEl);
         }
         if (chessGame.lastMove && (sq === chessGame.lastMove.from || sq === chessGame.lastMove.to)) el.addClass('lastmove');
         board.append(el);
