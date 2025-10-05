@@ -1038,28 +1038,30 @@ function renderBoard() {
 }
 
 function onSquareClick() {
-    if (!chessGame) return;
-    var me = $('#username').text();
-    var myTurn = chessGame.turn === chessGame.color;
-    if (!myTurn) { flashStatus("Wait your turn"); return; }
+    if (!chessGame || pendingPromotion) return;
     var sq = $(this).data('square');
+    var pieceCode = squarePieceCode(sq);
+    var myTurn = chessGame.turn === chessGame.color;
     if (!selectedSquare) {
+        if (!pieceCode) return;
+        if (!myTurn) { flashStatus('Wait your turn'); return; }
+        if (!isPlayersPiece(pieceCode)) { flashStatus('Not your piece'); return; }
         selectedSquare = sq;
         $('#chess-board .chess-square').removeClass('selected');
         $(this).addClass('selected');
-    } else {
-        if (sq === selectedSquare) { selectedSquare = null; $('#chess-board .chess-square').removeClass('selected'); return; }
-        // Simple auto-queen promotion detection
-        var promo = null;
-        if (/[1-8]/.test(sq.slice(1)) && /[1-8]/.test(selectedSquare.slice(1))) {
-            var fromRank = parseInt(selectedSquare[1],10), toRank = parseInt(sq[1],10);
-            if (chessGame.color === 'white' && fromRank === 7 && toRank === 8) promo = 'q';
-            if (chessGame.color === 'black' && fromRank === 2 && toRank === 1) promo = 'q';
-        }
-        ws.send(JSON.stringify({ type: 'chess_move', game_id: chessGame.id, from: selectedSquare, to: sq, promotion: promo }));
-        selectedSquare = null;
-        $('#chess-board .chess-square').removeClass('selected');
+        return;
     }
+    if (selectedSquare === sq) {
+        clearSelection();
+        return;
+    }
+    if (pieceCode && isPlayersPiece(pieceCode) && myTurn) {
+        selectedSquare = sq;
+        $('#chess-board .chess-square').removeClass('selected');
+        $(this).addClass('selected');
+        return;
+    }
+    attemptMove(selectedSquare, sq);
 }
 
 function updateChessStatus() {
