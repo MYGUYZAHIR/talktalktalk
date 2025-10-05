@@ -559,12 +559,19 @@ function ready() {
         $('#writing').val('');
     }
 
-    if (localStorage.getItem("username") === null || localStorage.getItem("username") === '') {
-        $('#username').text(randomname);
-        localStorage.setItem("username", $('#username').text());
+    function getStoredUsername() {
+        try { return localStorage.getItem("username"); } catch (e) { return window._fallbackUsername || null; }
     }
-    else 
-        $('#username').text(localStorage.getItem("username"));
+    function setStoredUsername(val) {
+        try { localStorage.setItem("username", val); } catch (e) { window._fallbackUsername = val; }
+    }
+    var storedName = getStoredUsername();
+    if (storedName === null || storedName === '') {
+        $('#username').text(randomname);
+        setStoredUsername($('#username').text());
+    } else {
+        $('#username').text(storedName);
+    }
 
     var wsScheme = (location.protocol === 'https:') ? 'wss' : 'ws';
     var wsUrl = wsScheme + '://' + location.host + '/ws';
@@ -685,7 +692,7 @@ function ready() {
         }
         else if (data['type'] === 'usernameunavailable') {
             $('#username').text(data['username']);
-            localStorage.setItem("username", $('#username').text());
+            setStoredUsername($('#username').text());
             popup_message('Your username has been changed because the one you entered is reserved.', true, false);
         }
         else if (data['type'] === 'flood') {
@@ -774,7 +781,7 @@ function ready() {
         if (usr === '')
             usr = randomname;
         $('#username').text(usr);
-        localStorage.setItem("username", usr);
+        setStoredUsername(usr);
         $('#usernameinput').hide();
         $('#username').show();
         ws.send(JSON.stringify({ "type" : "username", "username" : usr }));
