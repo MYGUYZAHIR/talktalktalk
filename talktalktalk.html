@@ -474,6 +474,18 @@ html {
 .piece-bn { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bN.png'); }
 .piece-bp { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bP.png'); }
 
+.promotion-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.promotion-overlay::after { content: ''; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.35); }
+.promotion-overlay-panel { position: relative; background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; min-width: 200px; z-index: 1; }
+.promotion-overlay-title { font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
+.promotion-overlay-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+.promotion-choice { border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--bg-secondary); height: 3rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
+.promotion-choice:hover { background: var(--accent-secondary); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.promotion-piece { width: 2.25rem; height: 2.25rem; background-position: center; background-repeat: no-repeat; background-size: 90% auto; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2)); }
+.promotion-overlay-actions { display: flex; justify-content: center; }
+.promotion-cancel { padding: 0.5rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--bg-secondary); cursor: pointer; font-size: 0.875rem; }
+.promotion-cancel:hover { background: var(--accent-secondary); color: var(--accent-primary); }
+
 @media (max-width: 768px) {
   .chess-layout { grid-template-columns: 1fr; }
 }
