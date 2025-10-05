@@ -437,6 +437,7 @@ html {
 .invite-btn:hover { background: var(--accent-secondary); color: var(--accent-primary); }
 #connected .user-row { display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0; }
 #rejoin-wrapper { display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0; }
+#invites .user-row { display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0; }
 .invite-user-btn { padding: 0.125rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--accent-primary); cursor: pointer; font-size: 0.75rem; }
 .invite-user-btn:hover { background: var(--accent-secondary); }
 
@@ -992,9 +993,10 @@ function addInvite(fromUser) {
 
 function showRejoinPrompt() {
     if (!$('#invites #rejoin-game').length) {
-        var wrap = $('<div id="rejoin-wrapper" />');
+        var wrap = $('<div class="user-row" id="rejoin-wrapper" />');
+        var label = $('<span class="rejoin-label">Game in progress</span>');
         var btn = $('<button class="invite-user-btn" id="rejoin-game">rejoin game?</button>');
-        wrap.append(btn);
+        wrap.append(label).append(btn);
         $('#invites').append(wrap);
     }
 }
