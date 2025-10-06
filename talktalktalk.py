@@ -251,21 +251,22 @@ def main():
                             ws.send(json.dumps({'type' : 'messages', 'before': 0, 'messages': [db_get_str(i) for i in range(idafter,idx)]}))
 
                         elif msg['type'] == 'chess_resume_request':
-                            username = users.get(ws)
                             gid = msg.get('game_id')
                             try:
                                 if gid in games:
                                     g = games[gid]
-                                    if not g['over'] and (g['white'] == username or g['black'] == username):
+                                    if not g['over']:
                                         turn = 'white' if g['board'].turn == chess.WHITE else 'black'
                                         ws.send(json.dumps({'type': 'chess_resume', 'game_id': gid, 'white': g['white'], 'black': g['black'], 'fen': g['board'].fen(), 'turn': turn}))
                                 else:
-                                    # fallback: find any active game for this user
-                                    for gid2, g in games.items():
-                                        if not g['over'] and (g['white'] == username or g['black'] == username):
-                                            turn = 'white' if g['board'].turn == chess.WHITE else 'black'
-                                            ws.send(json.dumps({'type': 'chess_resume', 'game_id': gid2, 'white': g['white'], 'black': g['black'], 'fen': g['board'].fen(), 'turn': turn}))
-                                            break
+                                    # fallback: find any active game for this user (if username known)
+                                    username = users.get(ws)
+                                    if username:
+                                        for gid2, g in games.items():
+                                            if not g['over'] and (g['white'] == username or g['black'] == username):
+                                                turn = 'white' if g['board'].turn == chess.WHITE else 'black'
+                                                ws.send(json.dumps({'type': 'chess_resume', 'game_id': gid2, 'white': g['white'], 'black': g['black'], 'fen': g['board'].fen(), 'turn': turn}))
+                                                break
                             except Exception:
                                 pass
 
