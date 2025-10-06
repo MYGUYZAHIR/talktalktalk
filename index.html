@@ -1,0 +1,1292 @@
+<!-- 
+# TalkTalkTalk
+#
+# is an easy-installable small chat room, with chat history. 
+# 
+# author:  Joseph Ernest (twitter: @JosephErnest)
+# url:     http://github.com/josephernest/talktalktalk
+# license: MIT license
+ -->
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>TalkTalkTalk</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />    
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<style type="text/css">
+:root {
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f1f5f9;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --accent-primary: #3b82f6;
+    --accent-secondary: #e0e7ff;
+    --accent-hover: #2563eb;
+    --border-light: #e2e8f0;
+    --border-medium: #cbd5e1;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+}
+
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+html { 
+    overflow-y: scroll; 
+}
+
+/* Input Bar Styling */
+#input-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-light);
+    padding: 1rem;
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+}
+
+#input-wrapper {
+    max-width: 75%;
+    margin: 0 auto;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+}
+
+#writing {
+    flex: 1;
+    min-height: 2.5rem;
+    max-height: 8rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.875rem;
+    resize: none;
+    outline: none;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+#writing:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px var(--accent-secondary);
+}
+
+#writing::placeholder {
+    color: var(--text-muted);
+}
+
+#send-button {
+    min-width: 2.5rem;
+    height: 2.5rem;
+    background: var(--accent-primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+#send-button:hover:not(:disabled) {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+#send-button:disabled {
+    background: var(--text-muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Main Chat Area */
+#wrapper { 
+    width: 75%; 
+    margin: 1rem auto 6rem auto; 
+    word-wrap: break-word;
+    padding: 0 1rem;
+}
+
+#main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Message Bubbles */
+.message-bubble {
+    max-width: 70%;
+    margin-bottom: 0.5rem;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.message-bubble.own {
+    align-self: flex-start;
+    margin-right: auto;
+}
+
+.message-bubble.other {
+    align-self: flex-start;
+    margin-right: auto;
+}
+
+.message-username {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+.message-bubble.own .message-username {
+    text-align: left;
+}
+
+.message-content {
+    background: var(--bg-secondary);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-light);
+    position: relative;
+    transition: all 0.2s ease;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.message-bubble.own .message-content {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+}
+
+.message-content:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.message-content a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: currentColor;
+    opacity: 0.8;
+}
+
+.message-bubble.own .message-content a {
+    color: white;
+}
+
+/* Timestamp tooltip */
+.message-timestamp {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text-primary);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 1000;
+    margin-bottom: 0.25rem;
+}
+
+.message-timestamp::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: var(--text-primary);
+}
+
+.message-content:hover .message-timestamp {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Sidebar */
+#right { 
+    width: 20%; 
+    top: 0; 
+    right: 0; 
+    position: fixed; 
+    height: calc(100vh - 6rem); 
+    padding: 1.5rem 1rem; 
+    overflow-y: auto; 
+    overflow-x: hidden;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border-light);
+    box-shadow: var(--shadow-md);
+}
+
+#right h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+}
+
+#username { 
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+}
+
+.dashed { 
+    display: inline-block; 
+    border-bottom: 1px dashed var(--border-medium); 
+    cursor: pointer; 
+    margin-bottom: 1px;
+    transition: all 0.2s ease;
+}
+
+.dashed:hover {
+    border-bottom-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+#usernameinput { 
+    display: none; 
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    font-family: inherit;
+}
+
+#connected {
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+#connected div {
+    padding: 0.25rem 0;
+    color: var(--text-secondary);
+}
+
+/* Previous messages link */
+#previous { 
+    margin-bottom: 1.5rem; 
+    display: block;
+    text-align: center;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    color: var(--accent-primary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+#previous:hover {
+    background: var(--accent-secondary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Popup */
+#popup { 
+    z-index: 1000; 
+    position: fixed; 
+    left: 50%; 
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 400px;
+    background: var(--bg-secondary); 
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    text-align: center; 
+    padding: 2rem 1.5rem; 
+    color: var(--text-primary);
+}
+
+.hidden { 
+    display: none !important; 
+}
+
+.opaque { 
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    #right { 
+        width: 280px; 
+        right: -280px;
+        transition: right 0.3s ease;
+        z-index: 200;
+    }
+    
+    #right.open {
+        right: 0;
+    }
+    
+    #wrapper { 
+        width: 95%; 
+        margin: 1rem auto 6rem auto;
+    }
+    
+    #input-wrapper {
+        max-width: 95%;
+    }
+    
+    .message-bubble {
+        max-width: 85%;
+    }
+    
+    #banner { 
+        display: none; 
+    }
+}
+
+@media (max-width: 480px) {
+    #input-wrapper {
+        padding: 0.75rem;
+    }
+    
+    #writing {
+        font-size: 1rem; /* Prevent zoom on iOS */
+    }
+    
+    .message-bubble {
+        max-width: 90%;
+    }
+}
+
+/* Notification styles */
+#notifications {
+    margin-bottom: 1.5rem;
+}
+
+#notificationswitch {
+    padding: 0.25rem 0.5rem;
+    background: var(--accent-secondary);
+    color: var(--accent-primary);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Fork banner */
+#fork { 
+    z-index: 10; 
+}
+/* Chess UI */
+#invites .invite-item { margin: 0.25rem 0; padding: 0.25rem 0; color: var(--text-secondary); }
+.invite-actions { display: inline-flex; gap: 0.5rem; margin-left: 0.5rem; }
+.invite-btn { padding: 0.125rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--bg-secondary); cursor: pointer; font-size: 0.75rem; }
+.invite-btn:hover { background: var(--accent-secondary); color: var(--accent-primary); }
+#connected .user-row { display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0; }
+#rejoin-wrapper { display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0; }
+#invites .user-row { display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0; }
+.invite-user-btn { padding: 0.125rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--accent-primary); cursor: pointer; font-size: 0.75rem; }
+.invite-user-btn:hover { background: var(--accent-secondary); }
+.link-sent { margin-left: 0.5rem; color: var(--text-secondary); font-size: 0.75rem; }
+
+#chess-modal { z-index: 1000; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 95vw; max-width: 720px; background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); padding: 1rem; }
+.chess-layout { display: grid; grid-template-columns: 1fr 240px; gap: 1rem; }
+.chess-board { width: 100%; aspect-ratio: 1 / 1; display: grid; grid-template-columns: repeat(8, 1fr); border: 1px solid var(--border-light); border-radius: var(--radius-lg); overflow: hidden; }
+.chess-square { display: flex; align-items: center; justify-content: center; user-select: none; cursor: pointer; position: relative; }
+:root { --chess-light: #eeeed2; --chess-dark: #769656; }
+.chess-square.light { background: var(--chess-light); }
+.chess-square.dark { background: var(--chess-dark); }
+.chess-square.selected { outline: 3px solid var(--accent-primary); outline-offset: -3px; }
+.chess-square.lastmove { box-shadow: inset 0 0 0 3px rgba(246, 223, 99, 0.45); }
+.chess-square.drag-over { outline: 3px solid var(--accent-primary); outline-offset: -3px; }
+.chess-square.in-check { box-shadow: inset 0 0 0 3px rgba(220, 53, 69, 0.6); }
+.chess-panel { border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 0.75rem; height: 100%; display: flex; flex-direction: column; gap: 0.5rem; }
+.chess-panel h4 { margin-bottom: 0.25rem; color: var(--text-secondary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.chess-status { min-height: 1.5rem; color: var(--text-secondary); }
+.chess-actions { margin-top: auto; display: flex; gap: 0.5rem; }
+.chess-button { padding: 0.5rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--bg-secondary); cursor: pointer; }
+.chess-button:hover { background: var(--accent-secondary); color: var(--accent-primary); }
+
+/* Pieces (Staunton-style via external assets) */
+.chess-piece { position: absolute; inset: 0; background-position: center; background-repeat: no-repeat; background-size: 80% auto; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); pointer-events: auto; cursor: grab; }
+.chess-piece.dragging { cursor: grabbing; opacity: 0.6; }
+/* White */
+.piece-wk { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wK.png'); }
+.piece-wq { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wQ.png'); }
+.piece-wr { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wR.png'); }
+.piece-wb { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wB.png'); }
+.piece-wn { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wN.png'); }
+.piece-wp { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/wP.png'); }
+/* Black */
+.piece-bk { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bK.png'); }
+.piece-bq { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bQ.png'); }
+.piece-br { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bR.png'); }
+.piece-bb { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bB.png'); }
+.piece-bn { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bN.png'); }
+.piece-bp { background-image: url('https://chessboardjs.com/img/chesspieces/wikipedia/bP.png'); }
+
+.promotion-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10; }
+.promotion-overlay::after { content: ''; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.35); }
+.promotion-overlay-panel { position: relative; background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; min-width: 200px; z-index: 1; }
+.promotion-overlay-title { font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
+.promotion-overlay-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+.promotion-choice { border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--bg-secondary); height: 3rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
+.promotion-choice:hover { background: var(--accent-secondary); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.promotion-piece { width: 2.25rem; height: 2.25rem; background-position: center; background-repeat: no-repeat; background-size: 90% auto; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2)); }
+.promotion-overlay-actions { display: flex; justify-content: center; }
+.promotion-cancel { padding: 0.5rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--bg-secondary); cursor: pointer; font-size: 0.875rem; }
+.promotion-cancel:hover { background: var(--accent-secondary); color: var(--accent-primary); }
+
+@media (max-width: 768px) {
+  .chess-layout { grid-template-columns: 1fr; }
+}
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+</head>
+<body>
+
+
+<div id="right">
+    <h3>ZyberTalk</h3>
+    
+    <div id="notifications">
+        <h3>Notifications</h3>
+        <span id="notificationswitch" class="dashed">on</span>
+    </div>
+    
+    <div>
+        <h3>Username</h3>
+        <span id="username" class="dashed">user</span>
+        <input value="user1" id="usernameinput" maxlength="16" />
+    </div>
+    
+    <div>
+        <h3>Game Invites</h3>
+        <div id="invites"></div>
+    </div>
+
+    <div>
+        <h3>Online Users</h3>
+        <div id="connected"></div>
+    </div>
+</div>
+
+<div id="wrapper">
+    <a id="previous" href="" class="hidden">Load previous messages...</a>
+    <div id="main"></div>
+</div>
+
+<div id="input-container">
+    <div id="input-wrapper">
+        <textarea id="writing" placeholder="Type your message..."></textarea>
+        <button id="send-button" disabled>
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+
+<div id="popup" class="hidden popup"></div>
+<div id="chess-modal" class="hidden">
+  <div class="chess-layout">
+    <div class="chess-board" id="chess-board"></div>
+    <div class="chess-panel">
+      <h4>Chess</h4>
+      <div class="chess-status" id="chess-status"></div>
+      <div>White: <span id="chess-white"></span></div>
+      <div>Black: <span id="chess-black"></span></div>
+      <div class="chess-actions">
+        <button class="chess-button" id="chess-resign">Resign</button>
+        <button class="chess-button" id="chess-close">Close</button>
+      </div>
+    </div>
+  </div>
+  <div id="promotion-overlay" class="promotion-overlay hidden">
+    <div class="promotion-overlay-panel">
+      <div class="promotion-overlay-title">Choose promotion</div>
+      <div class="promotion-overlay-options" id="promotion-options"></div>
+      <div class="promotion-overlay-actions">
+        <button class="promotion-cancel" id="promotion-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="text/javascript">
+var popsound = new Audio('popsound.mp3');
+var randomname = 'user' + Math.floor((Math.random() * 1000) + 1);
+var displayeduser;
+var ws;
+var lastPong;
+var users;
+var firstId;
+var lastId;
+var loop;
+
+// Chess state
+var chessGame = null; // {id, white, black, color, fen, turn, lastMove}
+var selectedSquare = null;
+var dragSourceSquare = null;
+var pendingPromotion = null;
+
+function is_scrolled_end() { // See http://stackoverflow.com/a/40370876/1422096
+    return ((window.innerHeight + window.pageYOffset) >= document.body.offsetHeight);
+}
+
+function scroll_end () {
+    document.body.scrollTop = document.body.scrollHeight;                           // both useful because this one not working in FF47
+    document.documentElement.scrollTop = document.documentElement.scrollHeight;     // both useful because this one not working in Chrome 43 Android
+}
+
+function scroll_top () {
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+}    
+
+function add_urls(s) {
+    return s.replace(/(https?:\/\/[^ ]+)/g, '<a href="$1" target="_blank">$1</a>');
+}
+
+function timeConverter(t) {     // http://stackoverflow.com/a/40449006/1422096
+    if (t == null) 
+        return '';
+    var a = new Date(t * 1000);
+    var today = new Date();
+    var yesterday = new Date(Date.now() - 86400000);
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    var year = a.getFullYear();
+    var month = months[a.getMonth()];
+    var date = a.getDate();
+    var hour = a.getHours();
+    var min = a.getMinutes();
+    var time = ("0" + hour).slice(-2) + ':' + ("0" + min).slice(-2);
+    if (a.setHours(0,0,0,0) == today.setHours(0,0,0,0))
+        return 'today, ' + time;
+    else if (a.setHours(0,0,0,0) == yesterday.setHours(0,0,0,0))
+        return 'yesterday, ' + time;
+    else if (year == today.getFullYear())
+        return date + ' ' + month + ', ' + time;
+    else
+        return date + ' ' + month + ' ' + year + ', ' + time;
+}
+
+function mediaPlaybackRequiresUserGesture() { // http://stackoverflow.com/a/40474415/1422096
+  var audio = document.createElement('audio');
+  audio.play();
+  return audio.paused;
+}
+
+function ready() {
+    lastPong = undefined;
+    users = [];
+    firstId = Infinity;
+    lastId = -1;
+
+    if (mediaPlaybackRequiresUserGesture()) { // mobile devices require user gesture to trigger a play. "Notifications" off for them.
+        $('#notificationswitch').text('off');
+        $('#notifications').hide();
+    }
+
+    function popup_message (message, clicktoclosepopup, clicktoreload) {
+        $('#popup').text(message).removeClass('hidden');
+        $(':not(.popup)').addClass('opaque');
+        if (clicktoclosepopup)
+            $(document).on('click keydown', function() { $(document).off('click keydown'); $('#popup').addClass('hidden'); $(':not(#popup)').removeClass('opaque'); });
+        else if (clicktoreload)
+            $(document).on('click keydown', function() { $(document).off('click keydown'); $(document).off('keydown'); ws.close(); ready(); });
+    }
+
+    if (!window.WebSocket) {
+        $('#popup').text('Your browser is not supported, please use another browser.').removeClass('hidden');
+        $('#writing').prop('disabled', true);
+        $(':not(#popup)').addClass('opaque');
+    }
+    else {
+        $('#main').text('');
+        $('#writing').val('');
+    }
+
+    function getStoredUsername() {
+        try { return localStorage.getItem("username"); } catch (e) { return window._fallbackUsername || null; }
+    }
+    function setStoredUsername(val) {
+        try { localStorage.setItem("username", val); } catch (e) { window._fallbackUsername = val; }
+    }
+    var storedName = getStoredUsername();
+    if (storedName === null || storedName === '') {
+        $('#username').text(randomname);
+        setStoredUsername($('#username').text());
+    } else {
+        $('#username').text(storedName);
+    }
+
+    var storedWs = (function(){ try { return localStorage.getItem('WS_URL'); } catch(e){ return null; } })();
+    var qsWs = (function(){ try { return new URLSearchParams(location.search).get('ws'); } catch(e){ return null; } })();
+    if (qsWs) { try { localStorage.setItem('WS_URL', qsWs); } catch(e){} storedWs = qsWs; }
+    var wsOverride = (typeof window !== 'undefined' && window.WS_URL) ? window.WS_URL : storedWs;
+    var wsScheme = (location.protocol === 'https:') ? 'wss' : 'ws';
+    var wsUrl = wsOverride ? wsOverride : (wsScheme + '://' + location.host + '/ws');
+    ws = new WebSocket(wsUrl);
+      
+    $(window).on('beforeunload', function() { 
+        ws.close(); 
+    });
+
+    ws.onopen = function() { 
+        ws.send(JSON.stringify({ "type" : "username", "username" : $('#username').text() }));
+        lastPong = Date.now();
+        $('#popup').addClass('hidden'); $(':not(#popup)').removeClass('opaque');
+        $('#writing').focus();  
+        updateSendButton(); // Initialize send button state
+        scroll_end();
+        setTimeout(function() { scroll_end(); }, 200);  // useful on touch devices, when keyboard opens
+    };
+
+    ws.onclose = function() { 
+        setTimeout(function() { 
+            if (ws.readyState != 0 && ws.readyState != 1)
+                popup_message('Click anywhere or press any key to reload the page.', false, true);
+         }, 2000);
+    };    
+
+    loop = setInterval(function() {
+        ws.send('ping');
+        if (Date.now() - lastPong > 10000) { // disconnected from internet or phone idle mode; in both cases, ws.readyState can be 1 (OPEN) so we can't use that
+            ws.send('ping');   // this is your last chance ! we send a packet now, and if in 1 second, nothings happen, this means we're dead
+            setTimeout( function() {
+                if (Date.now() - lastPong > 10000)  // you missed your last chance !
+                    popup_message('Click anywhere or press any key to reload the page.', false, true);     // disconnected from internet
+                else                                // ok the phone was just idle, let's resume
+                    ws.send(JSON.stringify({ "type" : "username", "username" : $('#username').text() }));  // let's send username again, so that other users see me
+            }, 1000);
+        }
+    }, 5000);
+
+    $('#previous').click(function(e) {
+        ws.send(JSON.stringify({'type': 'messagesbefore', 'id': firstId}));
+        e.preventDefault();
+        return false;
+    });
+
+    ws.onmessage = function(e) { 
+        lastPong = Date.now();
+        if (e['data'].slice(0,2) === 'id') {
+            var serverlastid = e['data'].slice(2);
+            if (serverlastid != lastId) { // some messages were lost
+                ws.send(JSON.stringify({'type': 'messagesafter', 'id': lastId}));
+            }
+            return;
+        }
+        var data = JSON.parse(e['data']);
+        if (data['type'] === 'message') {
+            if (data['id'] > lastId + 1) {  // some messages were lost
+                ws.send(JSON.stringify({'type': 'messagesafter', 'id': lastId}));
+                return;
+            }
+            lastId = data['id'];
+            var isscrolledend = is_scrolled_end();
+            var isOwnMessage = data['username'] === $('#username').text();
+            var bubbleClass = isOwnMessage ? 'own' : 'other';
+            var messageHtml = '<div class="message-bubble ' + bubbleClass + '">' +
+                '<div class="message-username">' + data['username'] + '</div>' +
+                '<div class="message-content">' +
+                    '<div class="message-timestamp">' + timeConverter(data['datetime']) + '</div>' +
+                    add_urls(data['message']) +
+                '</div>' +
+                '</div>';
+            $('#main').append(messageHtml);
+            if (isscrolledend)
+                scroll_end();
+            if (data['username'] !== $('#username').text() && data['username'] !== displayeduser && $('#notificationswitch').text() === 'on') {
+                popsound.load(); popsound.play();
+            }
+        }
+        else if (data['type'] === 'messages') {
+            var newmessages = document.createDocumentFragment();
+            var messagelist = data['messages'];
+            for (var i = 0; i < messagelist.length; i++) {
+                var msg = JSON.parse(messagelist[i]);
+                if (data['before'] != 1 && msg['id'] <= lastId)       // message already added 
+                    continue;
+                var isOwnMessage = msg['username'] === $('#username').text();
+                var bubbleClass = isOwnMessage ? 'own' : 'other';
+                var messageHtml = '<div class="message-bubble ' + bubbleClass + '">' +
+                    '<div class="message-username">' + msg['username'] + '</div>' +
+                    '<div class="message-content">' +
+                        '<div class="message-timestamp">' + timeConverter(msg['datetime']) + '</div>' +
+                        add_urls(msg['message']) +
+                    '</div>' +
+                    '</div>';
+                $(newmessages).append(messageHtml);
+                firstId = Math.min(firstId, msg['id'])
+                lastId = Math.max(lastId, msg['id']);
+            }
+            if (data['before'] == 1)
+                $('#main').prepend(newmessages); 
+            else
+                $('#main').append(newmessages);
+            if (firstId > 0 && firstId != Infinity)
+                $('#previous').removeClass('hidden');
+            else
+                $('#previous').addClass('hidden');
+            if (data['before'] == 1)
+                scroll_top();
+            else
+                scroll_end();
+        }
+        else if (data['type'] === 'userlist') {
+            users = data['connected'];
+            renderConnectedList();
+        }
+        else if (data['type'] === 'chess_invite') {
+            addInvite(data['from']);
+        }
+        else if (data['type'] === 'chess_start') {
+            startChessGame(data);
+        }
+        else if (data['type'] === 'chess_move') {
+            if (chessGame && chessGame.id === data['game_id']) {
+                chessGame.fen = data['fen'];
+                chessGame.turn = data['turn'];
+                chessGame.inCheck = !!data['check'];
+                chessGame.lastMove = { from: data['from'], to: data['to'] };
+                renderBoard();
+                updateChessStatus();
+            }
+        }
+        else if (data['type'] === 'chess_over') {
+            if (chessGame && chessGame.id === data['game_id']) {
+                chessGame.over = true;
+                $('#chess-status').text('Game over: ' + data['result'] + ' (' + data['reason'] + ')');
+                hideRejoinPrompt();
+            }
+        }
+        else if (data['type'] === 'chess_illegal') {
+            flashStatus('Illegal move');
+        }
+        else if (data['type'] === 'chess_error') {
+            flashStatus(data['message'] || 'Error');
+        }
+        else if (data['type'] === 'username') {  // server asks to (re)send username
+            ws.send(JSON.stringify({ "type" : "username", "username" : $('#username').text() }));
+        }
+        else if (data['type'] === 'usernameunavailable') {
+            $('#username').text(data['username']);
+            setStoredUsername($('#username').text());
+            popup_message('Your username has been changed because the one you entered is reserved.', true, false);
+        }
+        else if (data['type'] === 'flood') {
+            popup_message('Please do not flood this chat.', false, false);
+            ws.onclose = undefined;
+            clearInterval(loop);
+            ws.close();
+        }
+        else if (data['type'] === 'displayeduser') {
+            displayeduser = data['username'];
+        }
+    };
+
+    $('#username').on('click', function(e) { 
+        $('#username').hide(); 
+        $('#usernameinput').val($('#username').text()).show().focus(); 
+        e.preventDefault(); 
+        return false; 
+    });
+
+    $('#writing').on('click', function(e) {             // trick for touch devices: when phone keyboard opens, we won't be scrolled-end anymore, so force it
+        if (is_scrolled_end())
+            setTimeout(function() { scroll_end(); }, 200);
+    });
+
+    // Send button functionality
+    function sendMessage() {
+        var message = $('#writing').val().trim();
+        if (message !== '') {
+            ws.send(JSON.stringify({ type: 'message', username: $('#username').text(), message: message }));
+            $('#writing').val('');
+            updateSendButton();
+        }
+    }
+
+    // Update send button state
+    function updateSendButton() {
+        var isEmpty = $('#writing').val().trim() === '';
+        $('#send-button').prop('disabled', isEmpty);
+    }
+
+    // Send button click handler
+    $('#send-button').click(function(e) {
+        e.preventDefault();
+        sendMessage();
+        $('#writing').focus();
+    });
+
+    // Input validation and auto-resize
+    $('#writing').on('input', function() {
+        updateSendButton();
+        // Auto-resize textarea
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 128) + 'px';
+    });
+
+    $('#writing').keydown(function(e) {
+        if (e.keyCode == 13 && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+        else if (e.keyCode == 9) {                   // see http://stackoverflow.com/a/40319943/1422096
+            var input = document.getElementById('writing');
+            var patt = /\b@?(\S+)$/;
+            e.preventDefault();
+            var start = input.selectionStart;
+            var seg = input.value.slice(0, start);
+            var match = (seg.match(patt) || [])[0];
+            if (!match) { return; }
+            var idx = users.findIndex(function (x) { return x.startsWith(match); });
+            if (idx < 0) { return; }
+            var replace = users[users[idx] === match ? (idx + 1) % users.length : idx];
+            var newSeg = seg.replace(patt, replace);
+            input.value = newSeg + input.value.slice(start);
+            input.setSelectionRange(newSeg.length, newSeg.length);
+        }
+        else if (e.keyCode == 33 || e.keyCode == 34) {   // alows to scroll with PAGE UP / DOWN even if textarea has focus
+            $('#writing').blur();
+            setTimeout(function() { $('#writing').focus(); }, 10);
+        }
+    });
+
+    $('#usernameinput').on('blur', function(e) {
+        var usr =  $('#usernameinput').val();
+        usr = usr.replace(/[:\s]/g, '');
+        if (usr === '')
+            usr = randomname;
+        $('#username').text(usr);
+        setStoredUsername(usr);
+        $('#usernameinput').hide();
+        $('#username').show();
+        ws.send(JSON.stringify({ "type" : "username", "username" : usr }));
+        e.preventDefault();
+    });
+
+    $('#usernameinput').keydown(function(e) {
+        if (e.keyCode == 13) {
+            $('#usernameinput').blur();
+        }
+        if (e.keyCode == 27) {
+            $('#usernameinput').val($('#username').text()).hide();
+            $('#username').show();
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    $('#notificationswitch').click(function() {
+        $('#notificationswitch').text($('#notificationswitch').text() === 'on' ? 'off' : 'on');
+    });
+
+    // Delegated handlers for invites and users
+    $('#connected').on('click', '.invite-user-btn', function() {
+        var toUser = $(this).data('user');
+        ws.send(JSON.stringify({ type: 'chess_invite', to: toUser }));
+        flashStatus('Invite sent to ' + toUser);
+        var row = $(this).closest('.user-row');
+        row.find('.link-sent').remove();
+        var msg = $('<span class="link-sent">link sent</span>');
+        row.append(msg);
+        setTimeout(function(){ msg.fadeOut(400, function(){ $(this).remove(); }); }, 3000);
+    });
+    $('#invites').on('click', '.invite-accept', function() {
+        var fromUser = $(this).closest('.invite-item').data('from');
+        ws.send(JSON.stringify({ type: 'chess_invite_accept', from: fromUser }));
+        $(this).closest('.invite-item').remove();
+    });
+    $('#invites').on('click', '.invite-decline', function() {
+        $(this).closest('.invite-item').remove();
+    });
+
+    // Chess modal controls
+    $('#chess-close').on('click', function(){
+        $('#chess-modal').addClass('hidden');
+        if (chessGame && !chessGame.over) {
+            showRejoinPrompt();
+        }
+    });
+    $('#chess-resign').on('click', function(){ if (chessGame) { ws.send(JSON.stringify({ type: 'chess_resign', game_id: chessGame.id })); } });
+    $('#chess-board')
+        .on('click', '.chess-square', onSquareClick)
+        .on('dragstart', '.chess-piece', onPieceDragStart)
+        .on('dragend', '.chess-piece', onPieceDragEnd)
+        .on('dragover', '.chess-square', onSquareDragOver)
+        .on('dragleave', '.chess-square', onSquareDragLeave)
+        .on('drop', '.chess-square', onSquareDrop);
+    $('#promotion-options').on('click', '.promotion-choice', onPromotionChoice);
+    $('#promotion-cancel').on('click', function(){ hidePromotionDialog(); });
+
+    // Rejoin button handler (delegated)
+    $('#invites').on('click', '#rejoin-game', function(){
+        if (chessGame && !chessGame.over) {
+            $('#chess-modal').removeClass('hidden');
+            renderBoard();
+            updateChessStatus();
+        }
+    });
+}
+
+function renderConnectedList() {
+    var me = $('#username').text();
+    var html = users.map(function(u){
+        if (u === me) return '<div class="user-row"><span>' + u + '</span></div>';
+        return '<div class="user-row"><span>' + u + '</span><button class="invite-user-btn" data-user="' + u + '">Invite</button></div>';
+    }).join('');
+    $('#connected').html(html);
+}
+
+function addInvite(fromUser) {
+    var item = $('<div class="invite-item" />').attr('data-from', fromUser).text('Invite from ' + fromUser);
+    var actions = $('<span class="invite-actions" />');
+    actions.append('<button class="invite-btn invite-accept">Accept</button>');
+    actions.append('<button class="invite-btn invite-decline">Decline</button>');
+    item.append(actions);
+    $('#invites').append(item);
+}
+
+function showRejoinPrompt() {
+    if (!$('#invites #rejoin-game').length) {
+        var wrap = $('<div class="user-row" id="rejoin-wrapper" />');
+        var btn = $('<button class="invite-user-btn" id="rejoin-game">game in progress</button>');
+        wrap.append(btn);
+        $('#invites').append(wrap);
+    }
+}
+
+function hideRejoinPrompt() {
+    $('#rejoin-wrapper').remove();
+}
+
+function startChessGame(data) {
+    var me = $('#username').text();
+    chessGame = {
+        id: data['game_id'],
+        white: data['white'],
+        black: data['black'],
+        color: (data['white'] === me) ? 'white' : 'black',
+        fen: data['fen'],
+        turn: data['turn'],
+        lastMove: null,
+        over: false
+    };
+    hideRejoinPrompt();
+    $('#chess-white').text(chessGame.white);
+    $('#chess-black').text(chessGame.black);
+    $('#chess-status').text('Your color: ' + chessGame.color);
+    renderBoard();
+    $('#chess-modal').removeClass('hidden');
+}
+
+function renderBoard() {
+    if (!chessGame) return;
+    var board = $('#chess-board');
+    board.empty();
+    if (pendingPromotion) {
+        hidePromotionDialog();
+    } else {
+        clearSelection();
+    }
+    dragSourceSquare = null;
+
+    // Build a map of actual board squares -> piece codes from the FEN
+    var parts = chessGame.fen.split(' ');
+    var ranksFEN = parts[0].split('/');
+    var files = ['a','b','c','d','e','f','g','h'];
+    var mapPiece = { 'P':'wp','N':'wn','B':'wb','R':'wr','Q':'wq','K':'wk','p':'bp','n':'bn','b':'bb','r':'br','q':'bq','k':'bk' };
+    chessGame.squareMap = {};
+    for (var r = 0; r < 8; r++) {
+        var row = ranksFEN[r];
+        var fileIndex = 0;
+        for (var i = 0; i < row.length; i++) {
+            var ch = row[i];
+            if (/[1-8]/.test(ch)) {
+                fileIndex += parseInt(ch, 10);
+            } else {
+                var file = files[fileIndex];
+                var rank = 8 - r; // FEN rows start at rank 8
+                var sq = file + String(rank);
+                var pieceCode = mapPiece[ch] || null;
+                if (pieceCode) chessGame.squareMap[sq] = pieceCode;
+                fileIndex++;
+            }
+        }
+    }
+
+    function appendSquare(sq) {
+        var fIndex = sq.charCodeAt(0) - 97; // 'a' -> 0
+        var rNum = parseInt(sq.charAt(1), 10);
+        var light = ((fIndex + rNum) % 2) === 0;
+        var el = $('<div class="chess-square" />').addClass(light ? 'light' : 'dark').attr('data-square', sq);
+        var pieceCode = chessGame.squareMap[sq];
+        if (pieceCode) {
+            var pieceEl = $('<div/>').addClass('chess-piece').addClass('piece-' + pieceCode).attr('draggable', true).attr('data-square', sq).attr('data-piece', pieceCode);
+            el.append(pieceEl);
+        }
+        if (chessGame.lastMove && (sq === chessGame.lastMove.from || sq === chessGame.lastMove.to)) el.addClass('lastmove');
+        board.append(el);
+    }
+
+    // Render squares in the correct visual orientation without altering actual coordinates
+    var rankOrder = (chessGame.color === 'white') ? [8,7,6,5,4,3,2,1] : [1,2,3,4,5,6,7,8];
+    var fileOrder = (chessGame.color === 'white') ? files : files.slice().reverse();
+    for (var ri = 0; ri < rankOrder.length; ri++) {
+        for (var fi = 0; fi < fileOrder.length; fi++) {
+            appendSquare(fileOrder[fi] + String(rankOrder[ri]));
+        }
+    }
+
+    // Highlight king in check
+    $('#chess-board .chess-square').removeClass('in-check');
+    if (chessGame.inCheck) {
+        var targetKing = (chessGame.turn === 'white') ? 'wk' : 'bk';
+        var kingSq = null;
+        for (var key in chessGame.squareMap) {
+            if (chessGame.squareMap[key] === targetKing) { kingSq = key; break; }
+        }
+        if (kingSq) {
+            $('#chess-board .chess-square[data-square="' + kingSq + '"]').addClass('in-check');
+        }
+    }
+}
+
+function squarePieceCode(sq) {
+    if (!chessGame || !chessGame.squareMap) return null;
+    return chessGame.squareMap[sq] || null;
+}
+
+function isPlayersPiece(pieceCode) {
+    if (!chessGame || !pieceCode) return false;
+    if (pieceCode.charAt(0) === 'w') return chessGame.color === 'white';
+    if (pieceCode.charAt(0) === 'b') return chessGame.color === 'black';
+    return false;
+}
+
+function clearSelection() {
+    selectedSquare = null;
+    $('#chess-board .chess-square').removeClass('selected');
+}
+
+function requiresPromotion(pieceCode, targetSquare) {
+    if (!pieceCode || pieceCode.charAt(1) !== 'p') return false;
+    var rank = parseInt(String(targetSquare).charAt(1), 10);
+    if (isNaN(rank)) return false;
+    if (pieceCode.charAt(0) === 'w') return rank === 8;
+    return rank === 1;
+}
+
+function openPromotionDialog(from, to, pieceCode) {
+    pendingPromotion = { from: from, to: to, color: pieceCode.charAt(0) };
+    var options = $('#promotion-options');
+    options.empty();
+    var prefix = pendingPromotion.color;
+    ['q','r','b','n'].forEach(function(symbol) {
+        var option = $('<button type="button" class="promotion-choice" />').attr('data-promotion', symbol);
+        option.append($('<div/>').addClass('promotion-piece').addClass('piece-' + prefix + symbol));
+        options.append(option);
+    });
+    $('#chess-board .chess-square').removeClass('selected');
+    $('#chess-board .chess-square[data-square="' + from + '"]').addClass('selected');
+    $('#chess-board .chess-square[data-square="' + to + '"]').addClass('selected');
+    selectedSquare = from;
+    $('#promotion-overlay').removeClass('hidden');
+}
+
+function hidePromotionDialog() {
+    pendingPromotion = null;
+    $('#promotion-overlay').addClass('hidden');
+    $('#promotion-options').empty();
+    clearSelection();
+}
+
+function sendMove(from, to, promotion) {
+    if (!chessGame) return;
+    var payload = { type: 'chess_move', game_id: chessGame.id, from: from, to: to };
+    if (promotion) payload.promotion = promotion;
+    ws.send(JSON.stringify(payload));
+    clearSelection();
+    $('#chess-board .chess-square').removeClass('drag-over');
+}
+
+function attemptMove(from, to) {
+    if (!chessGame || pendingPromotion) return;
+    var myTurn = chessGame.turn === chessGame.color;
+    if (!myTurn) {
+        flashStatus('Wait your turn');
+        return;
+    }
+    if (!from || !to || from === to) return;
+    var pieceCode = squarePieceCode(from);
+    if (!pieceCode) {
+        clearSelection();
+        return;
+    }
+    if (!isPlayersPiece(pieceCode)) {
+        flashStatus('Not your piece');
+        clearSelection();
+        return;
+    }
+    if (requiresPromotion(pieceCode, to)) {
+        openPromotionDialog(from, to, pieceCode);
+    } else {
+        sendMove(from, to, null);
+    }
+}
+
+function onSquareClick() {
+    if (!chessGame || pendingPromotion) return;
+    var sq = $(this).data('square');
+    var pieceCode = squarePieceCode(sq);
+    var myTurn = chessGame.turn === chessGame.color;
+    if (!selectedSquare) {
+        if (!pieceCode) return;
+        if (!myTurn) { flashStatus('Wait your turn'); return; }
+        if (!isPlayersPiece(pieceCode)) { flashStatus('Not your piece'); return; }
+        selectedSquare = sq;
+        $('#chess-board .chess-square').removeClass('selected');
+        $(this).addClass('selected');
+        return;
+    }
+    if (selectedSquare === sq) {
+        clearSelection();
+        return;
+    }
+    if (pieceCode && isPlayersPiece(pieceCode) && myTurn) {
+        selectedSquare = sq;
+        $('#chess-board .chess-square').removeClass('selected');
+        $(this).addClass('selected');
+        return;
+    }
+    attemptMove(selectedSquare, sq);
+}
+
+function onPieceDragStart(e) {
+    if (!chessGame || pendingPromotion) { e.preventDefault(); return; }
+    var parentSquare = $(this).parent().data('square');
+    var pieceCode = squarePieceCode(parentSquare);
+    if (!pieceCode) { e.preventDefault(); return; }
+    if (!isPlayersPiece(pieceCode)) { flashStatus('Not your piece'); e.preventDefault(); return; }
+    if (chessGame.turn !== chessGame.color) { flashStatus('Wait your turn'); e.preventDefault(); return; }
+    dragSourceSquare = parentSquare;
+    $('#chess-board .chess-square').removeClass('selected');
+    $('#chess-board .chess-square[data-square="' + parentSquare + '"]').addClass('selected');
+    selectedSquare = parentSquare;
+    $(this).addClass('dragging');
+    var dt = e.originalEvent && e.originalEvent.dataTransfer;
+    if (dt) {
+        dt.setData('text/plain', parentSquare);
+        dt.effectAllowed = 'move';
+    }
+}
+
+function onPieceDragEnd() {
+    $(this).removeClass('dragging');
+    dragSourceSquare = null;
+    clearSelection();
+    $('#chess-board .chess-square').removeClass('drag-over');
+}
+
+function onSquareDragOver(e) {
+    if (!dragSourceSquare) return;
+    e.preventDefault();
+    $(this).addClass('drag-over');
+}
+
+function onSquareDragLeave() {
+    $(this).removeClass('drag-over');
+}
+
+function onSquareDrop(e) {
+    if (!dragSourceSquare) return;
+    e.preventDefault();
+    var target = $(this).data('square');
+    $('#chess-board .chess-piece.dragging').removeClass('dragging');
+    $('#chess-board .chess-square').removeClass('drag-over');
+    var from = dragSourceSquare;
+    dragSourceSquare = null;
+    attemptMove(from, target);
+}
+
+function onPromotionChoice() {
+    if (!pendingPromotion) return;
+    var details = pendingPromotion;
+    var promotion = $(this).data('promotion');
+    hidePromotionDialog();
+    if (details && promotion) {
+        sendMove(details.from, details.to, promotion);
+    }
+}
+
+function updateChessStatus() {
+    var turnName = (chessGame.turn === 'white') ? chessGame.white : chessGame.black;
+    var suffix = chessGame && chessGame.inCheck ? ' (check)' : '';
+    $('#chess-status').text('Turn: ' + turnName + suffix);
+}
+
+function flashStatus(text) {
+    if (!text) return;
+    $('#chess-status').text(text);
+    setTimeout(function(){ updateChessStatus(); }, 1500);
+}
+
+$(document).ready(ready);
+
+</script>
+</body>
+</html>
