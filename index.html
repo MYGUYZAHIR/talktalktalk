@@ -685,13 +685,15 @@ function ready() {
 
     ws.onopen = function() {
         ws.send(JSON.stringify({ "type" : "username", "username" : $('#username').text() }));
-        try {
-            var ag = localStorage.getItem('active_game');
-            if (ag) {
-                var obj = JSON.parse(ag);
-                ws.send(JSON.stringify({ type: 'chess_resume_request', game_id: obj.id }));
-            }
-        } catch(e){}
+        setTimeout(function(){
+            try {
+                var ag = localStorage.getItem('active_game');
+                if (ag) {
+                    var obj = JSON.parse(ag);
+                    ws.send(JSON.stringify({ type: 'chess_resume_request', game_id: obj.id }));
+                }
+            } catch(e){}
+        }, 150);
         lastPong = Date.now();
         $('#popup').addClass('hidden'); $(':not(#popup)').removeClass('opaque');
         $('#writing').focus();  
@@ -811,6 +813,7 @@ function ready() {
                 lastMove: null,
                 over: false
             };
+            try { localStorage.setItem('active_game', JSON.stringify({ id: chessGame.id, white: chessGame.white, black: chessGame.black })); } catch(e){}
             $('#chess-white').text(chessGame.white);
             $('#chess-black').text(chessGame.black);
             showRejoinPrompt();
