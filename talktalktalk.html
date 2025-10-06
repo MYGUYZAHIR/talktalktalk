@@ -792,6 +792,22 @@ function ready() {
         else if (data['type'] === 'chess_invite') {
             addInvite(data['from']);
         }
+        else if (data['type'] === 'chess_resume') {
+            var me = $('#username').text();
+            chessGame = {
+                id: data['game_id'],
+                white: data['white'],
+                black: data['black'],
+                color: (data['white'] === me) ? 'white' : 'black',
+                fen: data['fen'],
+                turn: data['turn'],
+                lastMove: null,
+                over: false
+            };
+            $('#chess-white').text(chessGame.white);
+            $('#chess-black').text(chessGame.black);
+            showRejoinPrompt();
+        }
         else if (data['type'] === 'chess_start') {
             startChessGame(data);
         }
