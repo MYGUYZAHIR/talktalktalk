@@ -257,6 +257,15 @@ def main():
                             users[ws] = username
                             username_to_ws[username] = ws
                             send_userlist()
+                            # notify user of any active chess game to allow rejoin after reload/disconnect
+                            try:
+                                for gid, g in games.items():
+                                    if not g['over'] and (g['white'] == username or g['black'] == username):
+                                        turn = 'white' if g['board'].turn == chess.WHITE else 'black'
+                                        ws.send(json.dumps({'type': 'chess_resume', 'game_id': gid, 'white': g['white'], 'black': g['black'], 'fen': g['board'].fen(), 'turn': turn}))
+                                        break
+                            except Exception:
+                                pass
                 else:
                     break
             except (WebSocketError, ValueError, UnicodeDecodeError):      # ValueError happens for example when "No JSON object could be decoded", would be interesting to log it
