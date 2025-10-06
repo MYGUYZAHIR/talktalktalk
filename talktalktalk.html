@@ -671,8 +671,12 @@ function ready() {
         $('#username').text(storedName);
     }
 
+    var storedWs = (function(){ try { return localStorage.getItem('WS_URL'); } catch(e){ return null; } })();
+    var qsWs = (function(){ try { return new URLSearchParams(location.search).get('ws'); } catch(e){ return null; } })();
+    if (qsWs) { try { localStorage.setItem('WS_URL', qsWs); } catch(e){} storedWs = qsWs; }
+    var wsOverride = (typeof window !== 'undefined' && window.WS_URL) ? window.WS_URL : storedWs;
     var wsScheme = (location.protocol === 'https:') ? 'wss' : 'ws';
-    var wsUrl = wsScheme + '://' + location.host + '/ws';
+    var wsUrl = wsOverride ? wsOverride : (wsScheme + '://' + location.host + '/ws');
     ws = new WebSocket(wsUrl);
       
     $(window).on('beforeunload', function() { 
