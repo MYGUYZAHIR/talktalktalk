@@ -683,8 +683,15 @@ function ready() {
         ws.close(); 
     });
 
-    ws.onopen = function() { 
+    ws.onopen = function() {
         ws.send(JSON.stringify({ "type" : "username", "username" : $('#username').text() }));
+        try {
+            var ag = localStorage.getItem('active_game');
+            if (ag) {
+                var obj = JSON.parse(ag);
+                ws.send(JSON.stringify({ type: 'chess_resume_request', game_id: obj.id }));
+            }
+        } catch(e){}
         lastPong = Date.now();
         $('#popup').addClass('hidden'); $(':not(#popup)').removeClass('opaque');
         $('#writing').focus();  
@@ -809,6 +816,7 @@ function ready() {
             showRejoinPrompt();
         }
         else if (data['type'] === 'chess_start') {
+            try { localStorage.setItem('active_game', JSON.stringify({ id: data['game_id'], white: data['white'], black: data['black'] })); } catch(e){}
             startChessGame(data);
         }
         else if (data['type'] === 'chess_move') {
@@ -822,6 +830,7 @@ function ready() {
             }
         }
         else if (data['type'] === 'chess_over') {
+            try { localStorage.removeItem('active_game'); } catch(e){}
             if (chessGame && chessGame.id === data['game_id']) {
                 chessGame.over = true;
                 $('#chess-status').text('Game over: ' + data['result'] + ' (' + data['reason'] + ')');
@@ -976,6 +985,7 @@ function ready() {
         $('#chess-modal').addClass('hidden');
         if (chessGame && !chessGame.over) {
             showRejoinPrompt();
+            try { localStorage.setItem('active_game', JSON.stringify({ id: chessGame.id, white: chessGame.white, black: chessGame.black })); } catch(e){}
         }
     });
     $('#chess-resign').on('click', function(){ if (chessGame) { ws.send(JSON.stringify({ type: 'chess_resign', game_id: chessGame.id })); } });
