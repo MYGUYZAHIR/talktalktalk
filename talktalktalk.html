@@ -597,9 +597,15 @@ var loop;
 // Tab notification badge
 var __origTitle = document.title;
 var __unread = 0;
-function __updateTitleBadge(){ document.title = (__unread > 0 ? '(' + __unread + ') ' : '') + __origTitle; }
-document.addEventListener('visibilitychange', function(){ if (!document.hidden) { __unread = 0; __updateTitleBadge(); } });
-window.addEventListener('focus', function(){ __unread = 0; __updateTitleBadge(); });
+var __chessUnread = 0;
+function __updateTitleBadge(){
+  var parts = [];
+  if (__unread > 0) parts.push('(' + __unread + ')');
+  if (__chessUnread > 0) parts.push('♟' + __chessUnread);
+  document.title = (parts.length ? parts.join(' ') + ' ' : '') + __origTitle;
+}
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) { __unread = 0; __chessUnread = 0; __updateTitleBadge(); } });
+window.addEventListener('focus', function(){ __unread = 0; __chessUnread = 0; __updateTitleBadge(); });
 
 // Chess state
 var chessGame = null; // {id, white, black, color, fen, turn, lastMove}
@@ -830,6 +836,7 @@ function ready() {
         }
         else if (data['type'] === 'chess_invite') {
             addInvite(data['from']);
+            if (document.hidden) { __chessUnread += 1; __updateTitleBadge(); }
         }
         else if (data['type'] === 'chess_resume') {
             var me = $('#username').text();
@@ -860,6 +867,7 @@ function ready() {
                 chessGame.lastMove = { from: data['from'], to: data['to'] };
                 renderBoard();
                 updateChessStatus();
+                if (document.hidden && chessGame.turn === chessGame.color) { __chessUnread += 1; __updateTitleBadge(); }
             }
         }
         else if (data['type'] === 'chess_over') {
@@ -1039,6 +1047,7 @@ function ready() {
     $('#invites').on('click', '#rejoin-game', function(){
         if (chessGame && !chessGame.over) {
             $('#chess-modal').removeClass('hidden');
+            __chessUnread = 0; __updateTitleBadge();
             renderBoard();
             updateChessStatus();
         }
@@ -1077,6 +1086,7 @@ function hideRejoinPrompt() {
 }
 
 function startChessGame(data) {
+    __chessUnread = 0; __updateTitleBadge();
     var me = $('#username').text();
     chessGame = {
         id: data['game_id'],
