@@ -594,6 +594,13 @@ var firstId;
 var lastId;
 var loop;
 
+// Tab notification badge
+var __origTitle = document.title;
+var __unread = 0;
+function __updateTitleBadge(){ document.title = (__unread > 0 ? '(' + __unread + ') ' : '') + __origTitle; }
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) { __unread = 0; __updateTitleBadge(); } });
+window.addEventListener('focus', function(){ __unread = 0; __updateTitleBadge(); });
+
 // Chess state
 var chessGame = null; // {id, white, black, color, fen, turn, lastMove}
 var selectedSquare = null;
@@ -779,8 +786,12 @@ function ready() {
             if (data['username'] !== $('#username').text() && data['username'] !== displayeduser && $('#notificationswitch').text() === 'on') {
                 popsound.load(); popsound.play();
             }
+            if (document.hidden && data['username'] !== $('#username').text()) {
+                __unread += 1; __updateTitleBadge();
+            }
         }
         else if (data['type'] === 'messages') {
+            // Do not count history loads as unread
             var newmessages = document.createDocumentFragment();
             var messagelist = data['messages'];
             for (var i = 0; i < messagelist.length; i++) {
