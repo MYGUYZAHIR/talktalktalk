@@ -369,19 +369,37 @@ html {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    #right { 
-        width: 280px; 
+    #right {
+        width: 280px;
         right: -280px;
         transition: right 0.3s ease;
         z-index: 200;
     }
-    
+
     #right.open {
         right: 0;
     }
-    
-    #wrapper { 
-        width: 95%; 
+
+    #sidebar-toggle {
+        position: fixed;
+        top: 0.75rem;
+        right: 0.75rem;
+        width: 2.75rem;
+        height: 2.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--accent-primary);
+        color: #fff;
+        border: none;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        z-index: 300;
+    }
+    #sidebar-toggle:hover { background: var(--accent-hover); }
+
+    #wrapper {
+        width: 95%;
         margin: 1rem auto 6rem auto;
     }
     
@@ -427,9 +445,10 @@ html {
 }
 
 /* Fork banner */
-#fork { 
-    z-index: 10; 
+#fork {
+    z-index: 10;
 }
+#sidebar-toggle { display: none; }
 /* Chess UI */
 #invites .invite-item { margin: 0.25rem 0; padding: 0.25rem 0; color: var(--text-secondary); }
 .invite-actions { display: inline-flex; gap: 0.5rem; margin-left: 0.5rem; }
@@ -498,6 +517,7 @@ html {
 </head>
 <body>
 
+<button id="sidebar-toggle" aria-label="Open sidebar" title="Menu"><i class="fas fa-users"></i></button>
 
 <div id="right">
     <h3>ZyberTalk</h3>
@@ -635,7 +655,6 @@ function ready() {
 
     if (mediaPlaybackRequiresUserGesture()) { // mobile devices require user gesture to trigger a play. "Notifications" off for them.
         $('#notificationswitch').text('off');
-        $('#notifications').hide();
     }
 
     function popup_message (message, clicktoclosepopup, clicktoreload) {
@@ -982,6 +1001,9 @@ function ready() {
     $('#invites').on('click', '.invite-decline', function() {
         $(this).closest('.invite-item').remove();
     });
+
+    // Sidebar toggle (mobile)
+    $('#sidebar-toggle').on('click', function(){ $('#right').toggleClass('open'); });
 
     // Chess modal controls
     $('#chess-close').on('click', function(){
