@@ -694,9 +694,9 @@ function ready() {
 
     function popup_message (message, clicktoclosepopup, clicktoreload) {
         $('#popup').text(message).removeClass('hidden');
-        $(':not(.popup)').addClass('opaque');
+        $('body > *:not(#popup)').addClass('opaque');
         if (clicktoclosepopup)
-            $(document).on('click keydown', function() { $(document).off('click keydown'); $('#popup').addClass('hidden'); $(':not(#popup)').removeClass('opaque'); });
+            $(document).on('click keydown', function() { $(document).off('click keydown'); $('#popup').addClass('hidden'); $('body > *:not(#popup)').removeClass('opaque'); });
         else if (clicktoreload)
             $(document).on('click keydown', function() { $(document).off('click keydown'); $(document).off('keydown'); ws.close(); ready(); });
     }
@@ -704,7 +704,7 @@ function ready() {
     if (!window.WebSocket) {
         $('#popup').text('Your browser is not supported, please use another browser.').removeClass('hidden');
         $('#writing').prop('disabled', true);
-        $(':not(#popup)').addClass('opaque');
+        $('body > *:not(#popup)').addClass('opaque');
     }
     else {
         $('#main').text('');
@@ -778,7 +778,7 @@ function ready() {
         var $input = $('#first-username-input');
         var $save = $('#first-username-save');
         $overlay.removeClass('hidden').addClass('show');
-        $(':not(#first-login)').addClass('opaque');
+        $('body > *:not(#first-login)').addClass('opaque');
         function updateBtn(){
             var v = ($input.val() || '').replace(/[:\s]/g, '');
             $save.prop('disabled', v === '');
@@ -791,7 +791,7 @@ function ready() {
             $('#username').text(val);
             setStoredUsername(val);
             $overlay.addClass('hidden').removeClass('show');
-            $(':not(#first-login)').removeClass('opaque');
+            $('body > *:not(#first-login)').removeClass('opaque');
             connectWS();
         });
         setTimeout(function(){ $input.focus(); updateBtn(); }, 0);
