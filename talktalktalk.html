@@ -751,11 +751,12 @@ function ready() {
                 } catch(e){}
             }, 150);
             lastPong = Date.now();
-            $('#popup').addClass('hidden'); $(':not(#popup)').removeClass('opaque');
-            $('#writing').focus();  
+            $('#popup').addClass('hidden'); $('body > *:not(#popup)').removeClass('opaque');
+            $('#writing').focus();
             updateSendButton(); // Initialize send button state
             scroll_end();
             setTimeout(function() { scroll_end(); }, 200);  // useful on touch devices, when keyboard opens
+            ws.onmessage = handleWsMessage;
         };
 
         ws.onclose = function() { 
@@ -857,7 +858,6 @@ function ready() {
 
     // The rest of the original code below
 
-    ws && (ws.onmessage = ws.onmessage);
 
     // Existing event handlers and logic
 
@@ -1466,13 +1466,6 @@ function ready() {
         }
     }
 
-    // Attach onmessage when connection is established
-    var _origOpen = connectWS;
-    var __connectCalled = false;
-    connectWS = function(){
-        if (__connectCalled) return; __connectCalled = true; _origOpen();
-        if (ws) ws.onmessage = handleWsMessage;
-    };
 }
 
 $(document).ready(ready);
