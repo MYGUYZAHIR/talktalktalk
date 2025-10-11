@@ -734,6 +734,7 @@ function ready() {
         var wsScheme = (location.protocol === 'https:') ? 'wss' : 'ws';
         var wsUrl = wsOverride ? wsOverride : (wsScheme + '://' + location.host + '/ws');
         ws = new WebSocket(wsUrl);
+        ws.onmessage = handleWsMessage;
           
         $(window).on('beforeunload', function() { 
             if (ws) ws.close(); 
@@ -857,7 +858,6 @@ function ready() {
 
     // The rest of the original code below
 
-    ws && (ws.onmessage = ws.onmessage);
 
     // Existing event handlers and logic
 
