@@ -552,6 +552,11 @@ html {
         <h3>Online Users</h3>
         <div id="connected"></div>
     </div>
+
+    <div>
+        <h3>Offline Users</h3>
+        <div id="offline"></div>
+    </div>
 </div>
 
 <div id="wrapper">
@@ -612,6 +617,7 @@ var displayeduser;
 var ws;
 var lastPong;
 var users;
+var offlineUsers;
 var firstId;
 var lastId;
 var loop;
@@ -685,6 +691,7 @@ function mediaPlaybackRequiresUserGesture() { // http://stackoverflow.com/a/4047
 function ready() {
     lastPong = undefined;
     users = [];
+    offlineUsers = [];
     firstId = Infinity;
     lastId = -1;
 
@@ -694,9 +701,9 @@ function ready() {
 
     function popup_message (message, clicktoclosepopup, clicktoreload) {
         $('#popup').text(message).removeClass('hidden');
-        $(':not(.popup)').addClass('opaque');
+        $('body > *:not(#popup)').addClass('opaque');
         if (clicktoclosepopup)
-            $(document).on('click keydown', function() { $(document).off('click keydown'); $('#popup').addClass('hidden'); $(':not(#popup)').removeClass('opaque'); });
+            $(document).on('click keydown', function() { $(document).off('click keydown'); $('#popup').addClass('hidden'); $('body > *:not(#popup)').removeClass('opaque'); });
         else if (clicktoreload)
             $(document).on('click keydown', function() { $(document).off('click keydown'); $(document).off('keydown'); ws.close(); ready(); });
     }
@@ -704,7 +711,7 @@ function ready() {
     if (!window.WebSocket) {
         $('#popup').text('Your browser is not supported, please use another browser.').removeClass('hidden');
         $('#writing').prop('disabled', true);
-        $(':not(#popup)').addClass('opaque');
+        $('body > *:not(#popup)').addClass('opaque');
     }
     else {
         $('#main').text('');
@@ -778,7 +785,7 @@ function ready() {
         var $input = $('#first-username-input');
         var $save = $('#first-username-save');
         $overlay.removeClass('hidden').addClass('show');
-        $(':not(#first-login)').addClass('opaque');
+        $('body > *:not(#first-login)').addClass('opaque');
         function updateBtn(){
             var v = ($input.val() || '').replace(/[:\s]/g, '');
             $save.prop('disabled', v === '');
@@ -791,7 +798,7 @@ function ready() {
             $('#username').text(val);
             setStoredUsername(val);
             $overlay.addClass('hidden').removeClass('show');
-            $(':not(#first-login)').removeClass('opaque');
+            $('body > *:not(#first-login)').removeClass('opaque');
             connectWS();
         });
         setTimeout(function(){ $input.focus(); updateBtn(); }, 0);
@@ -955,8 +962,9 @@ function ready() {
     });
 
     // Delegated handlers for invites and users
-    $('#connected').on('click', '.invite-user-btn', function() {
+    $('#right').on('click', '.invite-user-btn', function() {
         var toUser = $(this).data('user');
+        if (!toUser) return;
         if (ws && ws.readyState === 1) {
             ws.send(JSON.stringify({ type: 'chess_invite', to: toUser }));
             flashStatus('Invite sent to ' + toUser);
@@ -1008,13 +1016,17 @@ function ready() {
         }
     });
 
-    function renderConnectedList() {
+    function renderUserLists() {
         var me = $('#username').text();
-        var html = users.map(function(u){
+        var onlineHtml = users.map(function(u){
             if (u === me) return '<div class="user-row"><span>' + u + '</span></div>';
             return '<div class="user-row"><span>' + u + '</span><button class="invite-user-btn" data-user="' + u + '">Invite</button></div>';
         }).join('');
-        $('#connected').html(html);
+        $('#connected').html(onlineHtml);
+        var offlineHtml = (offlineUsers || []).map(function(u){
+            return '<div class="user-row"><span>' + u + '</span><button class="invite-user-btn" data-user="' + u + '">Invite</button></div>';
+        }).join('');
+        $('#offline').html(offlineHtml);
     }
 
     function addInvite(fromUser) {
@@ -1297,6 +1309,7 @@ function ready() {
     }
 
     function updateChessStatus() {
+        if (!chessGame) { $('#chess-status').text(''); return; }
         var turnName = (chessGame.turn === 'white') ? chessGame.white : chessGame.black;
         var suffix = chessGame && chessGame.inCheck ? ' (check)' : '';
         $('#chess-status').text('Turn: ' + turnName + suffix);
@@ -1305,7 +1318,7 @@ function ready() {
     function flashStatus(text) {
         if (!text) return;
         $('#chess-status').text(text);
-        setTimeout(function(){ updateChessStatus(); }, 1500);
+        setTimeout(function(){ if (chessGame) updateChessStatus(); else $('#chess-status').text(''); }, 1500);
     }
 
     // WebSocket message handler
@@ -1381,11 +1394,12 @@ function ready() {
         }
         else if (data['type'] === 'userlist') {
             users = data['connected'];
-            renderConnectedList();
+            offlineUsers = data['offline'] || [];
+            renderUserLists();
         }
         else if (data['type'] === 'chess_invite') {
             addInvite(data['from']);
-            if (document.hidden) { __chessUnread += 1; __updateTitleBadge(); }
+            if (document.hidden || data['offline']) { __chessUnread += 1; __updateTitleBadge(); }
         }
         else if (data['type'] === 'chess_resume') {
             var me = $('#username').text();
