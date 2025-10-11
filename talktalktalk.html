@@ -541,6 +541,7 @@ html {
         <h3>Username</h3>
         <span id="username" class="dashed">user</span>
         <input value="user1" id="usernameinput" maxlength="16" />
+        <div id="username-actions"><button id="forget-me-btn" class="invite-btn">remove from offline list</button></div>
     </div>
     
     <div>
@@ -959,6 +960,14 @@ function ready() {
 
     $('#notificationswitch').click(function() {
         $('#notificationswitch').text($('#notificationswitch').text() === 'on' ? 'off' : 'on');
+    });
+
+    // Remove current username from offline list
+    $('#forget-me-btn').on('click', function(e){
+        e.preventDefault();
+        if (ws && ws.readyState === 1) {
+            ws.send(JSON.stringify({ type: 'forget_me' }));
+        }
     });
 
     // Delegated handlers for invites and users
