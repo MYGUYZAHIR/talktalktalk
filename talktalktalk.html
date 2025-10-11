@@ -552,6 +552,11 @@ html {
         <h3>Online Users</h3>
         <div id="connected"></div>
     </div>
+
+    <div>
+        <h3>Offline Users</h3>
+        <div id="offline"></div>
+    </div>
 </div>
 
 <div id="wrapper">
@@ -612,6 +617,7 @@ var displayeduser;
 var ws;
 var lastPong;
 var users;
+var offlineUsers;
 var firstId;
 var lastId;
 var loop;
@@ -685,6 +691,7 @@ function mediaPlaybackRequiresUserGesture() { // http://stackoverflow.com/a/4047
 function ready() {
     lastPong = undefined;
     users = [];
+    offlineUsers = [];
     firstId = Infinity;
     lastId = -1;
 
@@ -955,8 +962,9 @@ function ready() {
     });
 
     // Delegated handlers for invites and users
-    $('#connected').on('click', '.invite-user-btn', function() {
+    $('#right').on('click', '.invite-user-btn', function() {
         var toUser = $(this).data('user');
+        if (!toUser) return;
         if (ws && ws.readyState === 1) {
             ws.send(JSON.stringify({ type: 'chess_invite', to: toUser }));
             flashStatus('Invite sent to ' + toUser);
@@ -1008,13 +1016,17 @@ function ready() {
         }
     });
 
-    function renderConnectedList() {
+    function renderUserLists() {
         var me = $('#username').text();
-        var html = users.map(function(u){
+        var onlineHtml = users.map(function(u){
             if (u === me) return '<div class="user-row"><span>' + u + '</span></div>';
             return '<div class="user-row"><span>' + u + '</span><button class="invite-user-btn" data-user="' + u + '">Invite</button></div>';
         }).join('');
-        $('#connected').html(html);
+        $('#connected').html(onlineHtml);
+        var offlineHtml = (offlineUsers || []).map(function(u){
+            return '<div class="user-row"><span>' + u + '</span><button class="invite-user-btn" data-user="' + u + '">Invite</button></div>';
+        }).join('');
+        $('#offline').html(offlineHtml);
     }
 
     function addInvite(fromUser) {
@@ -1381,11 +1393,12 @@ function ready() {
         }
         else if (data['type'] === 'userlist') {
             users = data['connected'];
-            renderConnectedList();
+            offlineUsers = data['offline'] || [];
+            renderUserLists();
         }
         else if (data['type'] === 'chess_invite') {
             addInvite(data['from']);
-            if (document.hidden) { __chessUnread += 1; __updateTitleBadge(); }
+            if (document.hidden || data['offline']) { __chessUnread += 1; __updateTitleBadge(); }
         }
         else if (data['type'] === 'chess_resume') {
             var me = $('#username').text();

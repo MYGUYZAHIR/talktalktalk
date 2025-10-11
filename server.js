@@ -182,7 +182,7 @@ function deliverQueuedInvites(username) {
     const inviter = parts[0];
     const target = parts[1];
     if (target === username) {
-      sendToUsername(username, { type: 'chess_invite', from: inviter });
+      sendToUsername(username, { type: 'chess_invite', from: inviter, offline: true });
     }
   }
 }
