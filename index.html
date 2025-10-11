@@ -1309,6 +1309,7 @@ function ready() {
     }
 
     function updateChessStatus() {
+        if (!chessGame) { $('#chess-status').text(''); return; }
         var turnName = (chessGame.turn === 'white') ? chessGame.white : chessGame.black;
         var suffix = chessGame && chessGame.inCheck ? ' (check)' : '';
         $('#chess-status').text('Turn: ' + turnName + suffix);
@@ -1317,7 +1318,7 @@ function ready() {
     function flashStatus(text) {
         if (!text) return;
         $('#chess-status').text(text);
-        setTimeout(function(){ updateChessStatus(); }, 1500);
+        setTimeout(function(){ if (chessGame) updateChessStatus(); else $('#chess-status').text(''); }, 1500);
     }
 
     // WebSocket message handler
