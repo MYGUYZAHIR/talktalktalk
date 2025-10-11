@@ -792,6 +792,13 @@ function ready() {
             $save.prop('disabled', v === '');
         }
         $input.on('input', updateBtn);
+        $input.on('keydown', function(e){
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                var val = ($input.val() || '').replace(/[:\s]/g, '');
+                if (val !== '') { $save.click(); }
+            }
+        });
         $save.on('click', function(e){
             e.preventDefault();
             var val = ($input.val() || '').replace(/[:\s]/g, '');
