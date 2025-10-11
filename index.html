@@ -522,7 +522,7 @@ html {
 .first-login-actions { display: flex; justify-content: flex-end; margin-top: 0.75rem; }
 .first-login-save { padding: 0.5rem 0.75rem; border: none; border-radius: var(--radius-md); background: var(--accent-primary); color: #fff; cursor: pointer; }
 .first-login-save:disabled { background: var(--text-muted); cursor: not-allowed; }
-.delete-account-btn { position: fixed; bottom: 1rem; right: 1rem; background: #ef4444; color: #fff; border: none; border-radius: var(--radius-lg); padding: 0.5rem 0.75rem; box-shadow: var(--shadow-md); cursor: pointer; z-index: 400; }
+.delete-account-btn { position: fixed; bottom: 1rem; right: 1rem; background: #ef4444; color: #fff; border: none; border-radius: var(--radius-lg); padding: 0.5rem 0.75rem; box-shadow: var(--shadow-md); cursor: pointer; z-index: 1000; }
 .delete-account-btn:hover { background: #dc2626; }
 </style>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
@@ -543,7 +543,6 @@ html {
         <h3>Username</h3>
         <span id="username" class="dashed">user</span>
         <input value="user1" id="usernameinput" maxlength="16" />
-        <div id="username-actions"><button id="forget-me-btn" class="delete-account-btn">delete account</button></div>
     </div>
     
     <div>
@@ -577,6 +576,7 @@ html {
 </div>
 
 <div id="popup" class="hidden popup"></div>
+<button id="forget-me-btn" class="delete-account-btn">delete account</button>
 
 <!-- First-time username modal -->
 <div id="first-login" class="first-login-overlay hidden">
