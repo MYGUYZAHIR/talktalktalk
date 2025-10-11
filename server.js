@@ -286,6 +286,14 @@ wss.on('connection', (ws, req) => {
       sendUserList();
       deliverQueuedInvites(username);
     }
+    else if (msg.type === 'forget_me') {
+      const uname = users.get(ws);
+      if (uname && knownUsers.has(uname)) {
+        knownUsers.delete(uname);
+        persistKnownUsers();
+        sendUserList();
+      }
+    }
     else if (msg.type === 'chess_invite') {
       const inviter = users.get(ws);
       const target = String(msg.to || '');
