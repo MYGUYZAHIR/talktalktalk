@@ -522,6 +522,10 @@ html {
 .first-login-actions { display: flex; justify-content: flex-end; margin-top: 0.75rem; }
 .first-login-save { padding: 0.5rem 0.75rem; border: none; border-radius: var(--radius-md); background: var(--accent-primary); color: #fff; cursor: pointer; }
 .first-login-save:disabled { background: var(--text-muted); cursor: not-allowed; }
+.delete-account-btn { position: fixed; bottom: 1rem; right: 1rem; background: #ef4444; color: #fff; border: none; border-radius: var(--radius-lg); padding: 0.5rem 0.75rem; box-shadow: var(--shadow-md); cursor: pointer; z-index: 1000; }
+.delete-account-btn:hover { background: #dc2626; }
+.danger-btn { background: #ef4444 !important; color: #fff; }
+.danger-btn:hover { background: #dc2626 !important; }
 </style>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 </head>
@@ -586,6 +590,18 @@ html {
   </div>
 </div>
 
+<!-- Delete account confirmation modal -->
+<div id="delete-confirm" class="first-login-overlay hidden">
+  <div class="first-login-panel">
+    <div class="first-login-title">Delete account</div>
+    <div style="margin: 0.5rem 0 0.75rem; color: var(--text-secondary); font-size: 0.9rem;">Are you sure? This removes your username from Offline Users.</div>
+    <div class="first-login-actions">
+      <button id="delete-cancel" class="first-login-save">Cancel</button>
+      <button id="delete-confirm-btn" class="first-login-save danger-btn">Delete account</button>
+    </div>
+  </div>
+</div>
+
 <div id="chess-modal" class="hidden">
   <div class="chess-layout">
     <div class="chess-board" id="chess-board"></div>
@@ -621,6 +637,7 @@ var offlineUsers;
 var firstId;
 var lastId;
 var loop;
+var __logoutRequested = false;
 
 // Tab notification badge
 var __origTitle = document.title;
@@ -734,6 +751,7 @@ function ready() {
         var wsScheme = (location.protocol === 'https:') ? 'wss' : 'ws';
         var wsUrl = wsOverride ? wsOverride : (wsScheme + '://' + location.host + '/ws');
         ws = new WebSocket(wsUrl);
+        ws.onmessage = handleWsMessage;
           
         $(window).on('beforeunload', function() { 
             if (ws) ws.close(); 
@@ -758,9 +776,9 @@ function ready() {
             setTimeout(function() { scroll_end(); }, 200);  // useful on touch devices, when keyboard opens
         };
 
-        ws.onclose = function() { 
-            setTimeout(function() { 
-                if (ws.readyState != 0 && ws.readyState != 1)
+        ws.onclose = function() {
+            setTimeout(function() {
+                if (!__logoutRequested && ws.readyState != 0 && ws.readyState != 1)
                     popup_message('Click anywhere or press any key to reload the page.', false, true);
              }, 2000);
         };    
@@ -857,7 +875,6 @@ function ready() {
 
     // The rest of the original code below
 
-    ws && (ws.onmessage = ws.onmessage);
 
     // Existing event handlers and logic
 
@@ -959,6 +976,30 @@ function ready() {
 
     $('#notificationswitch').click(function() {
         $('#notificationswitch').text($('#notificationswitch').text() === 'on' ? 'off' : 'on');
+    });
+
+    // Delete account confirmation flow
+    function showDeleteConfirm(){
+        var $overlay = $('#delete-confirm');
+        $overlay.removeClass('hidden').addClass('show');
+        $('body > *:not(#delete-confirm)').addClass('opaque');
+    }
+    function hideDeleteConfirm(){
+        var $overlay = $('#delete-confirm');
+        $overlay.addClass('hidden').removeClass('show');
+        $('body > *:not(#delete-confirm)').removeClass('opaque');
+    }
+    $('#forget-me-btn').on('click', function(e){ e.preventDefault(); showDeleteConfirm(); });
+    $('#delete-cancel').on('click', function(e){ e.preventDefault(); hideDeleteConfirm(); });
+    $('#delete-confirm-btn').on('click', function(e){
+        e.preventDefault();
+        if (ws && ws.readyState === 1) { ws.send(JSON.stringify({ type: 'forget_me' })); }
+        try { localStorage.removeItem('username'); } catch(err){}
+        setStoredUsername('');
+        __logoutRequested = true;
+        try { if (ws) ws.close(); } catch(err){}
+        hideDeleteConfirm();
+        showFirstLoginModal();
     });
 
     // Delegated handlers for invites and users
