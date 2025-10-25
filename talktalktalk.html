@@ -1203,7 +1203,10 @@ function ready() {
     // Chess modal controls
     $('#chess-close').on('click', function(){
         $('#chess-modal').addClass('hidden');
-        if (chessGame && !chessGame.over) {
+        if (stockfishGame) {
+            stockfishGame = null;
+            chessGame = null;
+        } else if (chessGame && !chessGame.over) {
             showRejoinPrompt();
             try { localStorage.setItem('active_game', JSON.stringify({ id: chessGame.id, white: chessGame.white, black: chessGame.black })); } catch(e){}
         }
