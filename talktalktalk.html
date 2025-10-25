@@ -16,6 +16,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/stockfish@11.0.0/src/stockfish.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chess.js@0.12.0/chess.min.js"></script>
 <style type="text/css">
 :root {
     --bg-primary: #f8fafc;
@@ -558,8 +560,41 @@ html {
     </div>
 
     <div>
-        <h3>Offline Users</h3>
-        <div id="offline"></div>
+        <h3>Play Stockfish</h3>
+        <div id="stockfish-section">
+            <div style="font-size: 0.875rem; margin-bottom: 0.75rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Difficulty (ELO):</label>
+                <select id="stockfish-difficulty" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-medium); border-radius: var(--radius-md); background: var(--bg-secondary); font-family: inherit;">
+                    <option value="600">600</option>
+                    <option value="750">750</option>
+                    <option value="900">900</option>
+                    <option value="1050">1050</option>
+                    <option value="1200">1200</option>
+                    <option value="1350">1350</option>
+                    <option value="1500">1500</option>
+                    <option value="1650">1650</option>
+                    <option value="1800">1800</option>
+                    <option value="1950">1950</option>
+                    <option value="2100">2100</option>
+                    <option value="2250">2250</option>
+                    <option value="2400">2400</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 0.75rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Play as:</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                        <input type="radio" id="stockfish-color-white" name="stockfish-color" value="white" checked />
+                        <span style="font-size: 0.875rem;">White</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                        <input type="radio" id="stockfish-color-black" name="stockfish-color" value="black" />
+                        <span style="font-size: 0.875rem;">Black</span>
+                    </label>
+                </div>
+            </div>
+            <button id="stockfish-play-btn" style="width: 100%; padding: 0.5rem; background: var(--accent-primary); color: white; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 500; font-size: 0.875rem;">Start Game</button>
+        </div>
     </div>
 </div>
 
@@ -658,6 +693,11 @@ var selectedSquare = null;
 var dragSourceSquare = null;
 var pendingPromotion = null;
 
+// Stockfish state
+var stockfishGame = null; // {fen, turn, color, engineColor, elo, over}
+var stockfishEngine = null;
+var stockfishReady = false;
+
 function is_scrolled_end() { // See http://stackoverflow.com/a/40370876/1422096
     return ((window.innerHeight + window.pageYOffset) >= document.body.offsetHeight);
 }
@@ -703,6 +743,146 @@ function mediaPlaybackRequiresUserGesture() { // http://stackoverflow.com/a/4047
   var audio = document.createElement('audio');
   audio.play();
   return audio.paused;
+}
+
+function initializeStockfish() {
+    if (stockfishEngine) return;
+    if (typeof window.Stockfish === 'undefined') {
+        console.error('Stockfish not loaded');
+        return;
+    }
+    stockfishEngine = window.Stockfish();
+    stockfishEngine.onmessage = function(event) {
+        var line = event.data;
+        if (line.indexOf('bestmove') > -1) {
+            var bestmove = line.split(' ')[1];
+            if (bestmove && stockfishGame && !stockfishGame.over) {
+                makeStockfishMove(bestmove);
+            }
+        }
+    };
+    var initCmd = 'uci\n';
+    if (stockfishEngine.postMessage) {
+        stockfishEngine.postMessage(initCmd);
+    }
+    stockfishReady = true;
+}
+
+function eloToDepth(elo) {
+    var baseElo = 600;
+    var increment = 150;
+    var baseDepth = 5;
+    var depthIncrement = 1;
+    var steps = Math.round((elo - baseElo) / increment);
+    return Math.max(1, baseDepth + steps * depthIncrement);
+}
+
+function startStockfishGame(playerColor, elo) {
+    if (!stockfishEngine) initializeStockfish();
+    if (typeof Chess === 'undefined') {
+        alert('Chess library not loaded. Please refresh the page.');
+        return;
+    }
+    var board = new Chess();
+    stockfishGame = {
+        board: board,
+        fen: board.fen(),
+        turn: 'w',
+        color: playerColor === 'white' ? 'w' : 'b',
+        engineColor: playerColor === 'white' ? 'b' : 'w',
+        elo: elo,
+        depth: eloToDepth(elo),
+        over: false
+    };
+    var me = $('#username').text();
+    chessGame = {
+        id: 'stockfish_' + Date.now(),
+        white: playerColor === 'white' ? me : 'Stockfish (' + elo + ')',
+        black: playerColor === 'black' ? me : 'Stockfish (' + elo + ')',
+        color: playerColor === 'white' ? 'white' : 'black',
+        fen: board.fen(),
+        turn: 'white',
+        lastMove: null,
+        over: false
+    };
+    $('#chess-white').text(chessGame.white);
+    $('#chess-black').text(chessGame.black);
+    $('#chess-status').text('Your color: ' + playerColor);
+    renderBoard();
+    $('#chess-modal').removeClass('hidden');
+    if (playerColor === 'black') {
+        setTimeout(function() { makeStockfishMove(); }, 500);
+    }
+}
+
+function makeStockfishMove(bestmove) {
+    if (!stockfishGame || stockfishGame.over) return;
+    var board = stockfishGame.board;
+    var moves;
+    if (bestmove) {
+        var from = bestmove.substring(0, 2);
+        var to = bestmove.substring(2, 4);
+        var promotion = bestmove.length > 4 ? bestmove[4] : undefined;
+        var moveObj = board.move({ from: from, to: to, promotion: promotion });
+        if (!moveObj) return;
+        moves = moveObj;
+    } else {
+        var legalMoves = board.moves({ verbose: true });
+        if (legalMoves.length === 0) {
+            stockfishGame.over = true;
+            var inCheck = board.in_check();
+            var result = inCheck ? 'checkmate' : 'stalemate';
+            $('#chess-status').text('Game over: ' + result);
+            return;
+        }
+        var position = board.fen();
+        var depth = stockfishGame.depth;
+        var cmd = 'position fen ' + position + '\ngo depth ' + depth + '\n';
+        if (stockfishEngine.postMessage) {
+            stockfishEngine.postMessage(cmd);
+        }
+        return;
+    }
+    stockfishGame.fen = board.fen();
+    stockfishGame.turn = board.turn();
+    chessGame.fen = board.fen();
+    chessGame.turn = board.turn() === 'w' ? 'white' : 'black';
+    chessGame.lastMove = { from: moves.from, to: moves.to };
+    renderBoard();
+    if (board.in_checkmate() || board.in_stalemate()) {
+        stockfishGame.over = true;
+        var result = board.in_checkmate() ? 'checkmate' : 'stalemate';
+        var winner = board.turn() === 'w' ? 'Black' : 'White';
+        $('#chess-status').text('Game over: ' + result + ', ' + winner + ' wins!');
+    } else {
+        updateChessStatus();
+        if (board.turn() === stockfishGame.engineColor) {
+            setTimeout(function() { makeStockfishMove(); }, 300);
+        }
+    }
+}
+
+function handleStockfishMove(from, to, promotion) {
+    if (!stockfishGame) return false;
+    var board = stockfishGame.board;
+    var moveObj = board.move({ from: from, to: to, promotion: promotion });
+    if (!moveObj) return false;
+    stockfishGame.fen = board.fen();
+    stockfishGame.turn = board.turn();
+    chessGame.fen = board.fen();
+    chessGame.turn = board.turn() === 'w' ? 'white' : 'black';
+    chessGame.lastMove = { from: from, to: to };
+    renderBoard();
+    if (board.in_checkmate() || board.in_stalemate()) {
+        stockfishGame.over = true;
+        var result = board.in_checkmate() ? 'checkmate' : 'stalemate';
+        var winner = board.turn() === 'w' ? 'Black' : 'White';
+        $('#chess-status').text('Game over: ' + result + ', ' + winner + ' wins!');
+    } else {
+        updateChessStatus();
+        setTimeout(function() { makeStockfishMove(); }, 300);
+    }
+    return true;
 }
 
 function ready() {
@@ -1031,12 +1211,31 @@ function ready() {
     // Chess modal controls
     $('#chess-close').on('click', function(){
         $('#chess-modal').addClass('hidden');
-        if (chessGame && !chessGame.over) {
+        if (stockfishGame) {
+            stockfishGame = null;
+            chessGame = null;
+        } else if (chessGame && !chessGame.over) {
             showRejoinPrompt();
             try { localStorage.setItem('active_game', JSON.stringify({ id: chessGame.id, white: chessGame.white, black: chessGame.black })); } catch(e){}
         }
     });
-    $('#chess-resign').on('click', function(){ if (chessGame && ws && ws.readyState === 1) { ws.send(JSON.stringify({ type: 'chess_resign', game_id: chessGame.id })); } });
+    $('#chess-resign').on('click', function(){
+        if (stockfishGame) {
+            stockfishGame.over = true;
+            $('#chess-modal').addClass('hidden');
+            stockfishGame = null;
+            chessGame = null;
+        } else if (chessGame && ws && ws.readyState === 1) {
+            ws.send(JSON.stringify({ type: 'chess_resign', game_id: chessGame.id }));
+        }
+    });
+
+    $('#stockfish-play-btn').on('click', function() {
+        var playerColor = $('input[name="stockfish-color"]:checked').val();
+        var elo = parseInt($('#stockfish-difficulty').val());
+        startStockfishGame(playerColor, elo);
+    });
+
     $('#chess-board')
         .on('click', '.chess-square', onSquareClick)
         .on('dragstart', '.chess-piece', onPieceDragStart)
@@ -1064,10 +1263,6 @@ function ready() {
             return '<div class="user-row"><span>' + u + '</span><button class="invite-user-btn" data-user="' + u + '">Invite</button></div>';
         }).join('');
         $('#connected').html(onlineHtml);
-        var offlineHtml = (offlineUsers || []).map(function(u){
-            return '<div class="user-row"><span>' + u + '</span><button class="invite-user-btn" data-user="' + u + '">Invite</button></div>';
-        }).join('');
-        $('#offline').html(offlineHtml);
     }
 
     function addInvite(fromUser) {
@@ -1189,6 +1384,10 @@ function ready() {
 
     function isPlayersPiece(pieceCode) {
         if (!chessGame || !pieceCode) return false;
+        if (stockfishGame) {
+            var playerColorLetter = stockfishGame.color === 'w' ? 'w' : 'b';
+            return pieceCode.charAt(0) === playerColorLetter;
+        }
         if (pieceCode.charAt(0) === 'w') return chessGame.color === 'white';
         if (pieceCode.charAt(0) === 'b') return chessGame.color === 'black';
         return false;
@@ -1232,7 +1431,12 @@ function ready() {
     }
 
     function sendMove(from, to, promotion) {
-        if (!chessGame || !ws || ws.readyState !== 1) return;
+        if (!chessGame) return;
+        if (stockfishGame) {
+            handleStockfishMove(from, to, promotion);
+            return;
+        }
+        if (!ws || ws.readyState !== 1) return;
         var payload = { type: 'chess_move', game_id: chessGame.id, from: from, to: to };
         if (promotion) payload.promotion = promotion;
         ws.send(JSON.stringify(payload));
