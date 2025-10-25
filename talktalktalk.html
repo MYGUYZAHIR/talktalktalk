@@ -779,8 +779,11 @@ function eloToDepth(elo) {
 
 function startStockfishGame(playerColor, elo) {
     if (!stockfishEngine) initializeStockfish();
-    var ChessCtor = require('chess.js').Chess;
-    var board = new ChessCtor();
+    if (typeof Chess === 'undefined') {
+        alert('Chess library not loaded. Please refresh the page.');
+        return;
+    }
+    var board = new Chess();
     stockfishGame = {
         board: board,
         fen: board.fen(),
