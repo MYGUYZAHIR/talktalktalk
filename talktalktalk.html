@@ -746,8 +746,11 @@ function mediaPlaybackRequiresUserGesture() { // http://stackoverflow.com/a/4047
 
 function initializeStockfish() {
     if (stockfishEngine) return;
-    var Stockfish = typeof window.Stockfish === 'undefined' ? require('stockfish') : window.Stockfish;
-    stockfishEngine = Stockfish();
+    if (typeof window.Stockfish === 'undefined') {
+        console.error('Stockfish not loaded');
+        return;
+    }
+    stockfishEngine = window.Stockfish();
     stockfishEngine.onmessage = function(event) {
         var line = event.data;
         if (line.indexOf('bestmove') > -1) {
