@@ -1373,6 +1373,10 @@ function ready() {
 
     function isPlayersPiece(pieceCode) {
         if (!chessGame || !pieceCode) return false;
+        if (stockfishGame) {
+            var playerColorLetter = stockfishGame.color === 'w' ? 'w' : 'b';
+            return pieceCode.charAt(0) === playerColorLetter;
+        }
         if (pieceCode.charAt(0) === 'w') return chessGame.color === 'white';
         if (pieceCode.charAt(0) === 'b') return chessGame.color === 'black';
         return false;
