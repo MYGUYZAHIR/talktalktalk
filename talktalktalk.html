@@ -743,6 +743,140 @@ function mediaPlaybackRequiresUserGesture() { // http://stackoverflow.com/a/4047
   return audio.paused;
 }
 
+function initializeStockfish() {
+    if (stockfishEngine) return;
+    var Stockfish = typeof window.Stockfish === 'undefined' ? require('stockfish') : window.Stockfish;
+    stockfishEngine = Stockfish();
+    stockfishEngine.onmessage = function(event) {
+        var line = event.data;
+        if (line.indexOf('bestmove') > -1) {
+            var bestmove = line.split(' ')[1];
+            if (bestmove && stockfishGame && !stockfishGame.over) {
+                makeStockfishMove(bestmove);
+            }
+        }
+    };
+    var initCmd = 'uci\n';
+    if (stockfishEngine.postMessage) {
+        stockfishEngine.postMessage(initCmd);
+    }
+    stockfishReady = true;
+}
+
+function eloToDepth(elo) {
+    var baseElo = 600;
+    var increment = 150;
+    var baseDepth = 5;
+    var depthIncrement = 1;
+    var steps = Math.round((elo - baseElo) / increment);
+    return Math.max(1, baseDepth + steps * depthIncrement);
+}
+
+function startStockfishGame(playerColor, elo) {
+    if (!stockfishEngine) initializeStockfish();
+    var ChessCtor = require('chess.js').Chess;
+    var board = new ChessCtor();
+    stockfishGame = {
+        board: board,
+        fen: board.fen(),
+        turn: 'w',
+        color: playerColor === 'white' ? 'w' : 'b',
+        engineColor: playerColor === 'white' ? 'b' : 'w',
+        elo: elo,
+        depth: eloToDepth(elo),
+        over: false
+    };
+    var me = $('#username').text();
+    chessGame = {
+        id: 'stockfish_' + Date.now(),
+        white: playerColor === 'white' ? me : 'Stockfish (' + elo + ')',
+        black: playerColor === 'black' ? me : 'Stockfish (' + elo + ')',
+        color: playerColor === 'white' ? 'white' : 'black',
+        fen: board.fen(),
+        turn: 'white',
+        lastMove: null,
+        over: false
+    };
+    $('#chess-white').text(chessGame.white);
+    $('#chess-black').text(chessGame.black);
+    $('#chess-status').text('Your color: ' + playerColor);
+    renderBoard();
+    $('#chess-modal').removeClass('hidden');
+    if (playerColor === 'black') {
+        setTimeout(function() { makeStockfishMove(); }, 500);
+    }
+}
+
+function makeStockfishMove(bestmove) {
+    if (!stockfishGame || stockfishGame.over) return;
+    var board = stockfishGame.board;
+    var moves;
+    if (bestmove) {
+        var from = bestmove.substring(0, 2);
+        var to = bestmove.substring(2, 4);
+        var promotion = bestmove.length > 4 ? bestmove[4] : undefined;
+        var moveObj = board.move({ from: from, to: to, promotion: promotion });
+        if (!moveObj) return;
+        moves = moveObj;
+    } else {
+        var legalMoves = board.moves({ verbose: true });
+        if (legalMoves.length === 0) {
+            stockfishGame.over = true;
+            var inCheck = board.in_check();
+            var result = inCheck ? 'checkmate' : 'stalemate';
+            $('#chess-status').text('Game over: ' + result);
+            return;
+        }
+        var position = board.fen();
+        var depth = stockfishGame.depth;
+        var cmd = 'position fen ' + position + '\ngo depth ' + depth + '\n';
+        if (stockfishEngine.postMessage) {
+            stockfishEngine.postMessage(cmd);
+        }
+        return;
+    }
+    stockfishGame.fen = board.fen();
+    stockfishGame.turn = board.turn();
+    chessGame.fen = board.fen();
+    chessGame.turn = board.turn() === 'w' ? 'white' : 'black';
+    chessGame.lastMove = { from: moves.from, to: moves.to };
+    renderBoard();
+    if (board.in_checkmate() || board.in_stalemate()) {
+        stockfishGame.over = true;
+        var result = board.in_checkmate() ? 'checkmate' : 'stalemate';
+        var winner = board.turn() === 'w' ? 'Black' : 'White';
+        $('#chess-status').text('Game over: ' + result + ', ' + winner + ' wins!');
+    } else {
+        updateChessStatus();
+        if (board.turn() === stockfishGame.engineColor) {
+            setTimeout(function() { makeStockfishMove(); }, 300);
+        }
+    }
+}
+
+function handleStockfishMove(from, to, promotion) {
+    if (!stockfishGame) return false;
+    var board = stockfishGame.board;
+    var moveObj = board.move({ from: from, to: to, promotion: promotion });
+    if (!moveObj) return false;
+    stockfishGame.fen = board.fen();
+    stockfishGame.turn = board.turn();
+    chessGame.fen = board.fen();
+    chessGame.turn = board.turn() === 'w' ? 'white' : 'black';
+    chessGame.lastMove = { from: from, to: to };
+    renderBoard();
+    if (board.in_checkmate() || board.in_stalemate()) {
+        stockfishGame.over = true;
+        var result = board.in_checkmate() ? 'checkmate' : 'stalemate';
+        var winner = board.turn() === 'w' ? 'Black' : 'White';
+        $('#chess-status').text('Game over: ' + result + ', ' + winner + ' wins!');
+    } else {
+        updateChessStatus();
+        setTimeout(function() { makeStockfishMove(); }, 300);
+    }
+    return true;
+}
+
 function ready() {
     lastPong = undefined;
     users = [];
