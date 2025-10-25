@@ -556,11 +556,6 @@ html {
         <h3>Online Users</h3>
         <div id="connected"></div>
     </div>
-
-    <div>
-        <h3>Offline Users</h3>
-        <div id="offline"></div>
-    </div>
 </div>
 
 <div id="wrapper">
@@ -1064,10 +1059,6 @@ function ready() {
             return '<div class="user-row"><span>' + u + '</span><button class="invite-user-btn" data-user="' + u + '">Invite</button></div>';
         }).join('');
         $('#connected').html(onlineHtml);
-        var offlineHtml = (offlineUsers || []).map(function(u){
-            return '<div class="user-row"><span>' + u + '</span><button class="invite-user-btn" data-user="' + u + '">Invite</button></div>';
-        }).join('');
-        $('#offline').html(offlineHtml);
     }
 
     function addInvite(fromUser) {
