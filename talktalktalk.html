@@ -691,6 +691,11 @@ var selectedSquare = null;
 var dragSourceSquare = null;
 var pendingPromotion = null;
 
+// Stockfish state
+var stockfishGame = null; // {fen, turn, color, engineColor, elo, over}
+var stockfishEngine = null;
+var stockfishReady = false;
+
 function is_scrolled_end() { // See http://stackoverflow.com/a/40370876/1422096
     return ((window.innerHeight + window.pageYOffset) >= document.body.offsetHeight);
 }
