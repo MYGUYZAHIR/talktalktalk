@@ -1208,7 +1208,23 @@ function ready() {
             try { localStorage.setItem('active_game', JSON.stringify({ id: chessGame.id, white: chessGame.white, black: chessGame.black })); } catch(e){}
         }
     });
-    $('#chess-resign').on('click', function(){ if (chessGame && ws && ws.readyState === 1) { ws.send(JSON.stringify({ type: 'chess_resign', game_id: chessGame.id })); } });
+    $('#chess-resign').on('click', function(){
+        if (stockfishGame) {
+            stockfishGame.over = true;
+            $('#chess-modal').addClass('hidden');
+            stockfishGame = null;
+            chessGame = null;
+        } else if (chessGame && ws && ws.readyState === 1) {
+            ws.send(JSON.stringify({ type: 'chess_resign', game_id: chessGame.id }));
+        }
+    });
+
+    $('#stockfish-play-btn').on('click', function() {
+        var playerColor = $('input[name="stockfish-color"]:checked').val();
+        var elo = parseInt($('#stockfish-difficulty').val());
+        startStockfishGame(playerColor, elo);
+    });
+
     $('#chess-board')
         .on('click', '.chess-square', onSquareClick)
         .on('dragstart', '.chess-piece', onPieceDragStart)
