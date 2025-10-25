@@ -1416,7 +1416,12 @@ function ready() {
     }
 
     function sendMove(from, to, promotion) {
-        if (!chessGame || !ws || ws.readyState !== 1) return;
+        if (!chessGame) return;
+        if (stockfishGame) {
+            handleStockfishMove(from, to, promotion);
+            return;
+        }
+        if (!ws || ws.readyState !== 1) return;
         var payload = { type: 'chess_move', game_id: chessGame.id, from: from, to: to };
         if (promotion) payload.promotion = promotion;
         ws.send(JSON.stringify(payload));
