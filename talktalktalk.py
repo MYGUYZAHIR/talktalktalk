@@ -40,6 +40,15 @@ class GeventWebSocketServer(ServerAdapter):
 def main():
     global idx
     db = dumbdbm.open('talktalktalk.db', 'c')
+
+    def db_get_str(i):
+        v = db[str(i)]
+        if isinstance(v, bytes):
+            try:
+                return v.decode('utf-8')
+            except UnicodeDecodeError:
+                return v.decode('latin-1', 'replace')
+        return v
     idx = len(db)
 
     users = {}
@@ -235,19 +244,48 @@ def main():
 
                         elif msg['type'] == 'messagesbefore':
                             idbefore = msg['id']
-                            ws.send(json.dumps({'type' : 'messages', 'before': 1, 'messages': [db[str(i)] for i in range(max(0,idbefore - 100),idbefore)]}))
+                            ws.send(json.dumps({'type' : 'messages', 'before': 1, 'messages': [db_get_str(i) for i in range(max(0,idbefore - 100),idbefore)]}))
 
                         elif msg['type'] == 'messagesafter':
                             idafter = msg['id']
-                            ws.send(json.dumps({'type' : 'messages', 'before': 0, 'messages': [db[str(i)] for i in range(idafter,idx)]}))
+                            ws.send(json.dumps({'type' : 'messages', 'before': 0, 'messages': [db_get_str(i) for i in range(idafter,idx)]}))
+
+                        elif msg['type'] == 'chess_resume_request':
+                            gid = msg.get('game_id')
+                            try:
+                                if gid in games:
+                                    g = games[gid]
+                                    if not g['over']:
+                                        turn = 'white' if g['board'].turn == chess.WHITE else 'black'
+                                        ws.send(json.dumps({'type': 'chess_resume', 'game_id': gid, 'white': g['white'], 'black': g['black'], 'fen': g['board'].fen(), 'turn': turn}))
+                                else:
+                                    # fallback: find any active game for this user (if username known)
+                                    username = users.get(ws)
+                                    if username:
+                                        for gid2, g in games.items():
+                                            if not g['over'] and (g['white'] == username or g['black'] == username):
+                                                turn = 'white' if g['board'].turn == chess.WHITE else 'black'
+                                                ws.send(json.dumps({'type': 'chess_resume', 'game_id': gid2, 'white': g['white'], 'black': g['black'], 'fen': g['board'].fen(), 'turn': turn}))
+                                                break
+                            except Exception:
+                                pass
 
                         elif msg['type'] == 'username':
                             username = clean_username(msg['username'], ws)
                             if ws not in users:          # welcome new user
-                                ws.send(json.dumps({'type' : 'messages', 'before': 0, 'messages': [db[str(i)] for i in range(max(0,idx - 100),idx)]}))
+                                ws.send(json.dumps({'type' : 'messages', 'before': 0, 'messages': [db_get_str(i) for i in range(max(0,idx - 100),idx)]}))
                             users[ws] = username
                             username_to_ws[username] = ws
                             send_userlist()
+                            # notify user of any active chess game to allow rejoin after reload/disconnect
+                            try:
+                                for gid, g in games.items():
+                                    if not g['over'] and (g['white'] == username or g['black'] == username):
+                                        turn = 'white' if g['board'].turn == chess.WHITE else 'black'
+                                        ws.send(json.dumps({'type': 'chess_resume', 'game_id': gid, 'white': g['white'], 'black': g['black'], 'fen': g['board'].fen(), 'turn': turn}))
+                                        break
+                            except Exception:
+                                pass
                 else:
                     break
             except (WebSocketError, ValueError, UnicodeDecodeError):      # ValueError happens for example when "No JSON object could be decoded", would be interesting to log it

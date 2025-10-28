@@ -15,10 +15,12 @@ const ADMINHIDDENNAME = 'adminxyz';
 // Persistence
 const DATA_DIR = path.join(__dirname, 'data');
 const MSG_FILE = path.join(DATA_DIR, 'messages.jsonl');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 let idx = 0; // next message id
 let messages = []; // array of message objects {type:'message', message, username, id, datetime}
+let knownUsers = new Set(); // all-time seen users (current canonical usernames)
 
 function loadMessages() {
   if (!fs.existsSync(MSG_FILE)) return;
@@ -38,7 +40,21 @@ function appendMessage(obj) {
   fs.appendFile(MSG_FILE, JSON.stringify(obj) + '\n', () => {});
 }
 
+function loadKnownUsers() {
+  try {
+    if (fs.existsSync(USERS_FILE)) {
+      const arr = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+      if (Array.isArray(arr)) arr.forEach((u) => { if (typeof u === 'string' && u) knownUsers.add(u); });
+    }
+  } catch (_) {}
+}
+
+function persistKnownUsers() {
+  try { fs.writeFile(USERS_FILE, JSON.stringify(Array.from(knownUsers)), () => {}); } catch(_) {}
+}
+
 loadMessages();
+loadKnownUsers();
 
 // Server
 const app = express();
@@ -78,9 +94,14 @@ function broadcast(payload) {
   }
 }
 
+function connectedUsernames() {
+  return Array.from(users.values());
+}
+
 function sendUserList() {
-  const list = Array.from(users.values());
-  const payload = { type: 'userlist', connected: list };
+  const connected = connectedUsernames();
+  const offline = Array.from(knownUsers).filter((u) => !connected.includes(u));
+  const payload = { type: 'userlist', connected, offline };
   for (const [ws] of users) send(ws, payload);
 }
 
@@ -117,6 +138,53 @@ function messagesRange(startId, endIdExclusive) {
     if (msg) out.push(JSON.stringify(msg));
   }
   return out;
+}
+
+function renameUserEverywhere(oldName, newName) {
+  if (!oldName || oldName === newName) return;
+  if (usernameToWs.has(oldName)) {
+    const ws = usernameToWs.get(oldName);
+    usernameToWs.delete(oldName);
+    if (ws) usernameToWs.set(newName, ws);
+  }
+  if (knownUsers.has(oldName)) {
+    knownUsers.delete(oldName);
+    knownUsers.add(newName);
+    persistKnownUsers();
+  }
+  // Rename in invites keys
+  const entries = Array.from(invites.entries());
+  for (const [key, ts] of entries) {
+    const parts = key.split('\u0000');
+    if (parts.length !== 2) continue;
+    const inviter = parts[0];
+    const target = parts[1];
+    let changed = false;
+    let ni = inviter, nt = target;
+    if (inviter === oldName) { ni = newName; changed = true; }
+    if (target === oldName) { nt = newName; changed = true; }
+    if (changed) {
+      invites.delete(key);
+      invites.set(ni + '\u0000' + nt, ts);
+    }
+  }
+  // Update current games labels (non-critical to functionality but keeps UX sensible)
+  for (const g of games.values()) {
+    if (g.white === oldName) g.white = newName;
+    if (g.black === oldName) g.black = newName;
+  }
+}
+
+function deliverQueuedInvites(username) {
+  for (const key of invites.keys()) {
+    const parts = key.split('\u0000');
+    if (parts.length !== 2) continue;
+    const inviter = parts[0];
+    const target = parts[1];
+    if (target === username) {
+      sendToUsername(username, { type: 'chess_invite', from: inviter, offline: true });
+    }
+  }
 }
 
 // Cleanup stale users
@@ -162,7 +230,7 @@ wss.on('connection', (ws, req) => {
     userMessageTimes.set(ws, arr);
     if (arr.length === 10 && (arr[arr.length - 1] - arr[0]) < 5000) {
       send(ws, { type: 'flood' });
-      try { ws.close(); } catch(_){}
+      try { ws.close(); } catch(_){ }
       return;
     }
 
@@ -173,10 +241,14 @@ wss.on('connection', (ws, req) => {
       let message = String(msg.message || '').trim();
       let username = users.get(ws);
       if (!username) {
+        const prev = null;
         username = cleanUsername(msg.username, ws);
         users.set(ws, username);
         usernameToWs.set(username, ws);
+        knownUsers.add(username);
+        persistKnownUsers();
         sendUserList();
+        deliverQueuedInvites(username);
       }
       if (message) {
         if (message.length > 1000) message = message.slice(0, 1000) + '...';
@@ -198,14 +270,29 @@ wss.on('connection', (ws, req) => {
       send(ws, { type: 'messages', before: 0, messages: messagesRange(idafter, idx) });
     }
     else if (msg.type === 'username') {
+      const oldName = users.get(ws) || null;
       const username = cleanUsername(msg.username, ws);
       const isNew = !users.has(ws);
       users.set(ws, username);
       usernameToWs.set(username, ws);
+      if (oldName && oldName !== username) {
+        renameUserEverywhere(oldName, username);
+      }
+      knownUsers.add(username);
+      persistKnownUsers();
       if (isNew) {
         send(ws, { type: 'messages', before: 0, messages: messagesRange(Math.max(0, idx - 100), idx) });
       }
       sendUserList();
+      deliverQueuedInvites(username);
+    }
+    else if (msg.type === 'forget_me') {
+      const uname = users.get(ws);
+      if (uname && knownUsers.has(uname)) {
+        knownUsers.delete(uname);
+        persistKnownUsers();
+        sendUserList();
+      }
     }
     else if (msg.type === 'chess_invite') {
       const inviter = users.get(ws);
@@ -213,9 +300,13 @@ wss.on('connection', (ws, req) => {
       if (!inviter || !target || inviter === target) {
         send(ws, { type: 'chess_error', message: 'Invalid invite' });
       } else {
-        invites.set(inviter + '\u0000' + target, Date.now());
+        const key = inviter + '\u0000' + target;
+        invites.set(key, Date.now());
         const ok = sendToUsername(target, { type: 'chess_invite', from: inviter });
-        if (!ok) send(ws, { type: 'chess_error', message: 'User not available' });
+        if (!ok) {
+          // queued for offline delivery; optional ack
+          // send(ws, { type: 'chess_info', message: 'Invite queued for delivery when user is online' });
+        }
       }
     }
     else if (msg.type === 'chess_invite_accept') {
